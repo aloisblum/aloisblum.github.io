@@ -1,0 +1,1413 @@
+[
+ {
+  "group": "F-Keyword-1",
+  "batches": [
+   {
+    "id": "kw-ib-ma",
+    "mode": "keyword",
+    "theme": "Investment Banking / M&A / Corporate Finance / ECM / DCM entry roles in Zurich, Zug and Schwyz",
+    "queries": [
+     "M&A Analyst Zürich",
+     "Investment Banking Analyst Zurich 2026",
+     "Corporate Finance Analyst Zürich",
+     "ECM Analyst Zurich",
+     "DCM Analyst Zurich",
+     "Transaction Services Analyst Zürich",
+     "Financial Advisory Absolvent Zürich",
+     "M&A Associate Zug",
+     "Analyst Mergers Acquisitions Baar",
+     "Junior M&A Berater Zürich"
+    ],
+    "status": "teilweise (ca. 6 Suchen)",
+    "erfolgreiche_suchen": 6
+   },
+   {
+    "id": "kw-pe-vc",
+    "mode": "keyword",
+    "theme": "Private Equity / Venture Capital / Private Markets entry roles in Zurich, Zug, Baar, Pfäffikon SZ",
+    "queries": [
+     "Private Equity Analyst Zürich",
+     "Private Equity Associate Zug",
+     "Private Markets Analyst Baar",
+     "Investment Analyst Private Equity Pfäffikon SZ",
+     "Co-Investment Analyst Switzerland",
+     "Venture Capital Analyst Zurich",
+     "Investment Associate VC Zurich",
+     "Secondaries Analyst Zug",
+     "Portfolio Analyst Private Equity Zürich",
+     "Private Equity Graduate Zurich 2026"
+    ],
+    "status": "teilweise (ca. 6 Suchen)",
+    "erfolgreiche_suchen": 6
+   },
+   {
+    "id": "kw-credit",
+    "mode": "keyword",
+    "theme": "Private Debt / Private Credit / Leveraged & Acquisition Finance / Credit Analyst entry roles in Zurich, Zug, Schwyz",
+    "queries": [
+     "Private Debt Analyst Zürich",
+     "Private Credit Associate Zurich",
+     "Leveraged Finance Analyst Zurich",
+     "Akquisitionsfinanzierung Zürich Analyst",
+     "Credit Analyst Junior Zürich",
+     "Direct Lending Analyst Switzerland",
+     "Structured Finance Analyst Zürich",
+     "Credit Risk Analyst Einstieg Zürich",
+     "Kreditanalyst Zug",
+     "Private Debt Associate Zug"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-hf-quant",
+    "mode": "keyword",
+    "theme": "Hedge fund, quantitative investment and trading entry roles in Zurich, Zug, Pfäffikon SZ",
+    "queries": [
+     "Hedge Fund Analyst Zurich",
+     "Quantitative Analyst Pfäffikon SZ",
+     "Junior Trader Zürich",
+     "Portfolio Analyst hedge fund Zug",
+     "Quant Investment Analyst Zurich",
+     "Sales & Trading Graduate Zurich",
+     "Investment Analyst long short equity Zurich",
+     "Junior Portfolio Manager hedge fund Switzerland",
+     "Trading Analyst Zug",
+     "Systematic investment analyst Zurich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-family-office",
+    "mode": "keyword",
+    "theme": "Family office (single and multi) investment roles in Zurich, Zug, Schwyz (Pfäffikon, Freienbach, Wollerau, Schindellegi)",
+    "queries": [
+     "Family Office Analyst Zürich",
+     "Single Family Office Zug Investment Analyst",
+     "Multi Family Office Junior Zürich",
+     "Family Office Investment Associate Switzerland",
+     "Family Office Pfäffikon SZ",
+     "Family Office Wollerau",
+     "Family Office Freienbach",
+     "Einzelfamilien-Office Zürich Analyst",
+     "Family Office Junior Investment Manager Zug",
+     "Family Office Reporting Analyst Zürich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-am",
+    "mode": "keyword",
+    "theme": "Asset management entry roles (investment analyst, junior PM, fund analyst, research) in Zurich and Zug",
+    "queries": [
+     "Junior Portfolio Manager Zürich",
+     "Investment Analyst Asset Management Zürich",
+     "Fund Analyst Zurich",
+     "Junior Investment Analyst Zug",
+     "Product Specialist Junior Zurich asset management",
+     "Research Analyst buy side Zurich",
+     "Investment Strategist Junior Zürich",
+     "Multi Asset Analyst Zurich",
+     "Fixed Income Analyst Junior Zürich",
+     "Equity Analyst Junior Zürich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-wm",
+    "mode": "keyword",
+    "theme": "Wealth management / private banking entry roles in Zurich and Zug",
+    "queries": [
+     "Junior Relationship Manager Zürich",
+     "Assistant Relationship Manager Zurich",
+     "Junior Kundenberater Private Banking Zürich",
+     "Investment Advisor Junior Zürich",
+     "Trainee Private Banking Zürich",
+     "Wealth Planner Junior Zurich",
+     "Junior Client Advisor Zug",
+     "Private Banking Graduate Zurich 2026",
+     "Relationship Manager Einstieg Zürich",
+     "Investment Consultant Junior Zürich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-graduate-programmes",
+    "mode": "keyword",
+    "theme": "Graduate / trainee / Absolventen programmes (all sectors in scope) in Zurich, Zug, Schwyz, including university career portals",
+    "queries": [
+     "Graduate Programme Zürich 2027",
+     "Graduate Program Zurich 2026",
+     "Traineeprogramm Hochschulabsolventen Zürich",
+     "Absolventenprogramm Zug",
+     "Direkteinstieg Hochschulabsolvent Finance Zürich",
+     "Berufseinstieg Master Zürich Finanz",
+     "Graduate Program Zug 2027",
+     "careerfairy Zurich graduate",
+     "jobteaser Zurich graduate finance",
+     "Trainee Finance Zug 2026"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-consulting",
+    "mode": "keyword",
+    "theme": "Consulting entry roles (strategy, management, financial services, economic consulting) in Zurich",
+    "queries": [
+     "Junior Consultant Zürich",
+     "Associate Consultant Zürich strategy",
+     "Business Analyst Unternehmensberatung Zürich",
+     "Berater Einstieg Zürich Absolvent",
+     "Consultant Financial Services Zürich Einstieg",
+     "Economic Consultant Zurich",
+     "Strategy Consultant Graduate Zurich 2026",
+     "Management Consultant Junior Zug",
+     "Transformation Consultant Junior Zürich",
+     "Unternehmensberatung Hochschulabsolvent Zürich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-tech-business",
+    "mode": "keyword",
+    "theme": "Business-side entry roles at tech companies and scale-ups in Zurich",
+    "queries": [
+     "Business Analyst Zürich tech",
+     "Strategy & Operations Associate Zurich",
+     "FP&A Analyst Zurich",
+     "Finance Graduate tech Zurich",
+     "Business Operations Associate Zurich startup",
+     "Corporate Development Analyst Zurich tech",
+     "Revenue Operations Analyst Zurich",
+     "Founder's Associate Zurich",
+     "Chief of Staff Associate Zurich startup",
+     "Investment Analyst startup Zurich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   }
+  ]
+ },
+ {
+  "group": "A-Banken-IB-WM",
+  "batches": [
+   {
+    "id": "ubs-gtp",
+    "title": "UBS Graduate Talent Program (Schweiz)",
+    "companies": [
+     "UBS — Graduate Talent Program Switzerland: every 2026 and 2027 GTP track located in Zurich (Investment Bank, Global Wealth Management, UHNW, Personal & Corporate Banking, Asset Management, Group Treasury, Risk, Finance, Reporting & Analytics, Liquidity & Funding, Business Analyst, Marketing, HR, Operations, CIO office …) — career site jobs.ubs.com (TGnewUI job details)"
+    ],
+    "focus": "Enumerate EVERY GTP track currently posted for Zurich (search '2026 Graduate Talent Program', '2027 Graduate Talent Program', 'Graduate Talent Program Zurich', 'GTP Zurich' with allowed_domains jobs.ubs.com and ch.linkedin.com, many variants by division). Include technology GTP tracks only if they are business-analyst / analytics / product type, not pure software engineering.",
+    "status": "erledigt",
+    "erfolgreiche_suchen": 54
+   },
+   {
+    "id": "ubs-entry",
+    "title": "UBS Einstiegsstellen ausserhalb des Graduate-Programms",
+    "companies": [
+     "UBS Investment Bank Zurich (M&A / Global Banking, ECM, DCM, Leveraged Capital Markets, Global Markets, Research)",
+     "UBS Global Wealth Management Zurich (Junior Client Advisor, Assistant RM, UHNW, Investment Specialist, Chief Investment Office)",
+     "UBS Personal & Corporate Banking Zurich (Corporate Finance, Credit, Firmenkunden-Einstieg)",
+     "UBS Asset Management Zurich (incl. Real Estate & Private Markets, UBS O'Connor, Hedge Fund Solutions, Unified Global Alternatives, Investment Solutions)",
+     "UBS Group Treasury / Risk Control / Finance Zurich (Analyst / Associate)"
+    ],
+    "focus": "Entry-level Analyst/Associate/Junior roles at UBS Zurich (jobs.ubs.com, ch.linkedin.com, efinancialcareers). Former Credit Suisse roles now at UBS count.",
+    "status": "erledigt",
+    "erfolgreiche_suchen": 48
+   },
+   {
+    "id": "juliusbaer",
+    "title": "Bank Julius Bär",
+    "companies": [
+     "Bank Julius Bär & Co. AG, Zurich — Graduate Programme (April 2027 intake etc.), 'University Graduate – Program Associate', and all entry-level Analyst/Associate/Junior roles in Wealth Management, Investment Management, Research, Risk, Finance, Treasury, Strategy (career site: jobs.juliusbaer.com / juliusbaer.com/careers)"
+    ],
+    "focus": "Search many variants: 'Julius Baer Analyst Zurich', 'Julius Bär Junior', 'Julius Baer Associate', 'Julius Baer Graduate 2027'.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "zkb-kantonalbanken",
+    "title": "Zürcher Kantonalbank & Kantonalbanken der Region",
+    "companies": [
+     "Zürcher Kantonalbank (ZKB) — Trainee-/Einstiegsprogramme, Private Banking, Corporate Finance / M&A, Akquisitions- und Leveraged Finance, Research, Asset Management (Swisscanto), Treasury, Risk (zkb.ch/jobs)",
+     "Zuger Kantonalbank",
+     "Schwyzer Kantonalbank",
+     "Luzerner Kantonalbank",
+     "Aargauische Kantonalbank",
+     "St.Galler Kantonalbank (Zurich office)",
+     "Graubündner Kantonalbank (Zurich private banking)",
+     "Bank Linth LLB (Uznach)"
+    ],
+    "focus": "ZKB is large — run many queries for it (Trainee, Einstieg, Analyst, Associate, Junior, Hochschulabsolvent).",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "ib-bulge",
+    "title": "Globale Investmentbanken in Zürich",
+    "companies": [
+     "Goldman Sachs (Zurich)",
+     "J.P. Morgan (Zurich)",
+     "Morgan Stanley (Zurich)",
+     "BofA Securities / Bank of America (Zurich)",
+     "Citi (Zurich)",
+     "Barclays (Zurich)",
+     "Deutsche Bank (Schweiz) Zurich",
+     "BNP Paribas (Suisse) Zurich",
+     "HSBC (Zurich)",
+     "Société Générale (Zurich)",
+     "Jefferies (Zurich)",
+     "Macquarie (Zurich)",
+     "Nomura (Zurich)",
+     "Santander (Zurich)"
+    ],
+    "focus": "Investment banking, markets, private bank and asset management entry roles located in Zurich.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "ib-global-boutiques",
+    "title": "Internationale M&A-Boutiquen in Zürich",
+    "companies": [
+     "Lazard (Zurich)",
+     "Rothschild & Co (Zurich — Global Advisory and Wealth & Asset Management)",
+     "Houlihan Lokey (Zurich)",
+     "Lincoln International (Zurich)",
+     "William Blair (Zurich)",
+     "Alantra (Zurich)",
+     "Oaklins Switzerland (Zurich)",
+     "Clairfield International (Zurich)",
+     "IMAP Switzerland",
+     "Evercore / PJT / Perella Weinberg / Moelis / Centerview / DC Advisory / Stifel / Baird / Raymond James — check whether any has a Zurich office with openings",
+     "Kroll (Zurich)",
+     "GCA / Mediobanca / Natixis Partners (Zurich if any)"
+    ],
+    "focus": "M&A Analyst / Associate / Graduate roles in Zurich.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "ib-swiss-boutiques",
+    "title": "Schweizer Corporate-Finance-Boutiquen, Broker & Research",
+    "companies": [
+     "IFBC (Zurich)",
+     "Finadvice (Zurich)",
+     "Helbling Corporate Finance (Zurich)",
+     "Octavian (Zurich)",
+     "Research Partners (Zurich)",
+     "Baader Helvea (Zurich)",
+     "Kepler Cheuvreux (Zurich)",
+     "Vontobel (Corporate Finance, Capital Markets, Equity Research)",
+     "BDO Corporate Finance (Zurich)",
+     "Grant Thornton Corporate Finance (Zurich)",
+     "Carlsquare (Zurich)",
+     "Mirabaud Securities (Zurich)",
+     "Swiss Capital Group / Capitalis / Nomad / other Zurich M&A boutiques found by searching 'M&A Boutique Zürich Analyst'"
+    ],
+    "focus": "Discover additional small M&A / corporate-finance advisers in Zurich and Zug via search.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "wm-intl",
+    "title": "Internationale Privatbanken in Zürich",
+    "companies": [
+     "Pictet (Zurich)",
+     "Lombard Odier (Zurich)",
+     "Union Bancaire Privée UBP (Zurich)",
+     "EFG Bank (Zurich)",
+     "Bank J. Safra Sarasin (Zurich)",
+     "Mirabaud (Zurich)",
+     "Edmond de Rothschild (Zurich)",
+     "Banque Syz (Zurich)",
+     "REYL Intesa Sanpaolo (Zurich)",
+     "Bordier (Zurich)",
+     "Deutsche Bank Wealth Management (Zurich)",
+     "BNP Paribas Wealth Management (Zurich)",
+     "J.P. Morgan Private Bank (Zurich)",
+     "Goldman Sachs Private Wealth Management (Zurich)",
+     "Citi Private Bank (Zurich)",
+     "Itaú Private Bank (Zurich)",
+     "Arab Bank (Switzerland) Zurich",
+     "Banque Havilland / CBH / PKB / Cornèr Bank (Zurich offices)"
+    ],
+    "focus": "Junior RM, Assistant RM, Investment Advisor, Analyst, Graduate roles in Zurich.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "wm-swiss",
+    "title": "Schweizer Privatbanken in Zürich und Umgebung",
+    "companies": [
+     "Vontobel Wealth Management (Zurich)",
+     "LGT Bank (Schweiz) (Zurich)",
+     "VP Bank (Zurich)",
+     "LLB (Schweiz) (Uznach / Zurich)",
+     "Maerki Baumann (Zurich)",
+     "Rahn+Bodmer (Zurich)",
+     "Lienhardt & Partner Privatbank (Zurich)",
+     "Bergos (Zurich)",
+     "Reichmuth & Co (Luzern / Zurich)",
+     "BZ Bank (Wilen SZ)",
+     "Bank von Roll (Zurich)",
+     "Kaiser Partner Privatbank (Zurich)",
+     "Hyposwiss Private Bank (Zurich)",
+     "Neue Helvetische Bank (Zurich)",
+     "Frankfurter Bankgesellschaft (Schweiz) (Zurich)",
+     "Globalance Bank (Zurich)",
+     "Tellco Bank (Schwyz)",
+     "Dreyfus Söhne (Zurich office)",
+     "Bank Avera / Bank Thalwil / Sparkasse Schwyz / Bank Zimmerberg (only investment / private-banking entry roles)"
+    ],
+    "focus": "Junior RM, Assistant RM, Portfolio Management, Investment Analyst, Trainee roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   }
+  ]
+ },
+ {
+  "group": "C-PD-PE-VC-Fintech",
+  "batches": [
+   {
+    "id": "private-debt-levfin",
+    "title": "Private Debt, Private Credit & Leveraged Finance",
+    "companies": [
+     "Partners Group Private Credit (Baar)",
+     "LGT Capital Partners Private Debt (Pfäffikon SZ)",
+     "Schroders Capital Private Debt (Zurich)",
+     "Tikehau Capital (Zurich)",
+     "Ardian Private Credit (Zurich)",
+     "EQT Credit (Zurich if any)",
+     "Patrimonium Asset Management (Baar)",
+     "Swiss Life Asset Managers Private Debt / Infrastructure Debt (Zurich)",
+     "AXA IM Alts Private Debt (Zurich)",
+     "Apollo (Zurich)",
+     "Muzinich / Kartesia / Capital Four / Arcmont / Pemberton / Hayfin / Ares / Blackstone Credit — check for Zurich offices",
+     "ZKB Akquisitionsfinanzierung / Leveraged Finance",
+     "UBS Leveraged Finance / Leveraged Capital Markets (Zurich)",
+     "Teylor (Zurich, SME lending)",
+     "Loanboox (Zurich)",
+     "Credit Exchange CRX (Zurich)",
+     "Helvetic Trust / Siguler Guff / Aquila Capital (Zurich if any)"
+    ],
+    "focus": "Credit Analyst, Private Debt Analyst/Associate, Leveraged / Acquisition Finance Analyst, Structured Finance, Direct Lending roles.",
+    "status": "teilweise (ca. 8 Suchen)",
+    "erfolgreiche_suchen": 8
+   },
+   {
+    "id": "fintech-crypto",
+    "title": "Fintech & Digital Assets (Zürich / Crypto Valley Zug)",
+    "companies": [
+     "Sygnum Bank (Zurich / Zug)",
+     "AMINA Bank (Zug)",
+     "Bitcoin Suisse (Zug)",
+     "21Shares (Zurich)",
+     "Crypto Finance AG (Zurich)",
+     "SIX Digital Exchange (Zurich)",
+     "Taurus (Zurich office)",
+     "Relai (Zurich)",
+     "TWINT (Zurich)",
+     "Avaloq (Zurich)",
+     "Additiv (Zurich)",
+     "Radicant (Zurich)",
+     "Yapeal (Zurich)",
+     "Neon (Zurich)",
+     "Revolut (Zurich)",
+     "Moonfare (Zurich)",
+     "Inyova (Zurich)",
+     "Smart Valor / Swissborg / Lykke",
+     "DFINITY (Zurich)",
+     "Cardano Foundation (Zug)",
+     "Web3 Foundation (Zug)",
+     "Tenity / F10 (Zurich)"
+    ],
+    "focus": "Business analyst, investment/research analyst, strategy, finance, product associate roles (not SWE).",
+    "status": "teilweise (ca. 9 Suchen)",
+    "erfolgreiche_suchen": 9
+   },
+   {
+    "id": "retail-regional-banks",
+    "title": "Universal-, Retail- & Neobanken (nur Finanz-/Investment-Einstiegsrollen)",
+    "companies": [
+     "Raiffeisen Schweiz (Zurich offices)",
+     "Migros Bank (Zurich)",
+     "Cembra Money Bank (Zurich)",
+     "PostFinance (Zurich office)",
+     "Swissquote (Zurich office)",
+     "Hypothekarbank Lenzburg",
+     "Bank Cler / Valiant / Clientis (Zurich region)",
+     "Bank WIR (Zurich)",
+     "Credit Suisse (Schweiz) successor units at UBS",
+     "Liechtensteinische Landesbank / LGT Zurich (only if not covered elsewhere)"
+    ],
+    "focus": "Graduate/Trainee programmes, Treasury, Corporate Finance, Credit Analyst, Investment Advisory, Asset Management entry roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "partners-group",
+    "title": "Partners Group",
+    "companies": [
+     "Partners Group (Baar / Zug) — Financial Analyst Program, Graduate / Analyst / Associate roles in Private Equity (Directs, Integrated Investments, Portfolio Management), Private Credit, Private Infrastructure, Private Real Estate, Client Solutions, Investment Solutions, Quantitative Analysis, Industry Value Creation, Finance, Risk, Business Analyst; career site careers.partnersgroup.com and Greenhouse / LinkedIn"
+    ],
+    "focus": "Partners Group posts dozens of Zug/Baar roles — run many queries (per business line, per level) to enumerate them all.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "lgt-cp",
+    "title": "LGT Capital Partners & LGT Gruppe",
+    "companies": [
+     "LGT Capital Partners (Pfäffikon SZ) — Private Equity Analyst Program (Co-Investment Team), Primaries, Secondaries, Private Debt, Real Estate, Liquid Alternatives, Multi-Asset, ILS, Sustainability, Portfolio Analytics, Investor Relations",
+     "LGT Private Banking / LGT Bank (Schweiz) Zurich — graduate and junior investment roles",
+     "LGT Lightstone (Zurich)"
+    ],
+    "focus": "Many queries: 'LGT Capital Partners Analyst', 'LGT Pfäffikon', 'LGT Associate', 'LGT Graduate'.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "pe-fof-secondaries",
+    "title": "Private-Markets-Plattformen, Fund-of-Funds & Secondaries",
+    "companies": [
+     "Capital Dynamics (Zug)",
+     "Schroders Capital (Zurich)",
+     "Hamilton Lane (Zug)",
+     "Unigestion Private Equity (Zurich)",
+     "Alpha Associates (Zurich)",
+     "Montana Capital Partners / PGIM Private Capital (Baar)",
+     "StepStone Group (Zurich)",
+     "Neuberger Berman Private Markets (Zurich)",
+     "Mercer Private Markets (Zurich)",
+     "Cambridge Associates (Zurich)",
+     "Adveq / Swiss Life AM Private Equity / Vontobel Private Markets",
+     "Muzinich / HQ Capital / Pantheon / Coller — check for Zurich"
+    ],
+    "focus": "Analyst/Associate in primaries, secondaries, co-investments, portfolio management, investor relations.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "pe-buyout-1",
+    "title": "Buyout-/Mid-Market-PE in Zürich, Zug, Schwyz (1)",
+    "companies": [
+     "Capvis (Baar)",
+     "Ufenau Capital Partners (Pfäffikon SZ)",
+     "Invision (Zurich)",
+     "Equistone Partners (Zurich)",
+     "EQT (Zurich)",
+     "CVC Capital Partners (Zurich)",
+     "Ardian (Zurich)",
+     "Bregal Unternehmerkapital (Zurich)",
+     "Afinum (Zurich)",
+     "Zurmont Madison (Zurich)",
+     "CGS Management (Pfäffikon SZ)",
+     "Constellation Capital (Freienbach SZ)",
+     "Helvetica Capital (Zurich)",
+     "Tikehau Capital Private Equity (Zurich)"
+    ],
+    "focus": "Analyst, Associate, Pre-MBA Associate, Value Creation Analyst, Portfolio roles; also graduate internships at these firms.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "pe-buyout-2-infra",
+    "title": "Weitere PE-Häuser, Growth & Infrastruktur",
+    "companies": [
+     "Nordic Capital / Waterland / IK Partners / Emeram / Aurelius / Mutares / Silverfleet / HQ Equita / Paragon / Gilde / AEA / Summit Partners — check for Zurich offices and openings",
+     "BV Group / Remaco / Mountain Partners / Tempus Capital / VR Equitypartner — check for Zurich region openings",
+     "Verium (Zurich)",
+     "SUSI Partners (Zurich)",
+     "Energy Infrastructure Partners EIP (Zurich)",
+     "Reichmuth Infrastruktur",
+     "Swiss Life AM Infrastructure (Zurich)",
+     "UBS AM Infrastructure / Macquarie Asset Management (Zurich)",
+     "Aventron / Axpo Solutions investments",
+     "ACE & Company / Kharis / other Zurich growth investors"
+    ],
+    "focus": "Discover every PE/growth/infrastructure investor with an entry-level opening in Zurich, Zug or Schwyz.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "vc-generalist",
+    "title": "Venture Capital (Tech)",
+    "companies": [
+     "Lakestar (Zurich)",
+     "Redalpine (Zurich)",
+     "btov Partners (Zurich / St. Gallen)",
+     "Wingman Ventures (Zurich)",
+     "Emerald Technology Ventures (Zurich)",
+     "Blue Horizon (Zurich)",
+     "Swisscom Ventures",
+     "Verve Ventures / investiere (Zurich)",
+     "Founderful (Zurich)",
+     "Polytech Ventures (Zurich)",
+     "Session.vc / Spicehaus / Übermorgen Ventures / Alpana Ventures (Zurich)",
+     "TX Ventures (Zurich)",
+     "SIX FinTech Ventures",
+     "Helvetia Venture Fund",
+     "Swiss Founders Fund",
+     "VI Partners (Zug)",
+     "b2venture",
+     "Occident (Zurich)",
+     "4FO Ventures"
+    ],
+    "focus": "Investment Analyst / Associate / Venture Fellow / Platform roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   }
+  ]
+ },
+ {
+  "group": "D-FO-Holding-Consulting",
+  "batches": [
+   {
+    "id": "vc-healthcare",
+    "title": "Healthcare-/Life-Science-Investoren",
+    "companies": [
+     "HBM Partners / HBM Healthcare Investments (Zug)",
+     "Bellevue Asset Management / BB Biotech (Küsnacht)",
+     "Nextech Invest (Zurich)",
+     "Bernina BioInvest (Zurich)",
+     "Medicxi / Endeavour Vision / Sofinnova / Forbion / EQT Life Sciences — check for Zurich/Zug",
+     "Adbio Partners / Rosetta / other healthcare VC in Zurich or Zug found via search",
+     "Novartis Venture Fund / Roche Venture Fund (only if role located in Zurich region)"
+    ],
+    "focus": "Investment Analyst / Associate / Research Analyst (biotech equity) roles.",
+    "status": "teilweise (ca. 9 Suchen)",
+    "erfolgreiche_suchen": 9
+   },
+   {
+    "id": "family-offices-mfo",
+    "title": "Multi-Family-Offices & Family-Office-Dienste",
+    "companies": [
+     "Kaiser Partner (Zurich)",
+     "Stonehage Fleming (Zug)",
+     "Swisspartners (Zurich)",
+     "Kendris (Zurich)",
+     "WMPartners (Zurich)",
+     "Hottinger Group (Zurich)",
+     "Tolomeo Capital (Zurich)",
+     "Octium",
+     "Fortem Capital",
+     "Alpina Capital (Zurich)",
+     "UBS Global Family Office / Julius Baer Family Office Services / Pictet Family Office (Zurich)",
+     "Maerki Baumann / Bergos / Aquila family-office teams",
+     "any multi-family office in Zurich, Zug, Pfäffikon SZ, Wollerau, Freienbach found via search 'Multi Family Office Zürich Analyst' / 'Family Office Zug Junior'"
+    ],
+    "focus": "Investment Analyst, Junior Investment Manager, Family Office Associate, Reporting/Consolidation Analyst.",
+    "status": "teilweise (ca. 9 Suchen)",
+    "erfolgreiche_suchen": 9
+   },
+   {
+    "id": "single-family-offices",
+    "title": "Single-Family-Offices & private Beteiligungsholdings",
+    "companies": [
+     "Jacobs Holding (Zurich)",
+     "Kühne Holding (Schindellegi SZ)",
+     "Cofra Holding (Zug) / Bregal Investments",
+     "Careal Holding (Zurich)",
+     "Artemis Group (Aarburg AG)",
+     "Ernst Göhner Stiftung Beteiligungen (Zug)",
+     "Schenker-Winkler Holding (Baar)",
+     "Patinex (Wilen SZ)",
+     "Emil Frey Holding (Zurich)",
+     "Spectrum Value Management / Schmidheiny family vehicles",
+     "Grisard Investment",
+     "any SINGLE family office posting in Zurich, Zug or Schwyz — also anonymous postings by recruiters ('Single Family Office in Zürich sucht Investment Analyst', 'renowned family office Zug Investment Associate')"
+    ],
+    "focus": "Single family offices rarely post publicly — search aggressively with recruiter phrasing, German and English, on LinkedIn, jobs.ch and eFinancialCareers.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "investment-companies",
+    "title": "Kotierte Beteiligungs- und Investmentgesellschaften",
+    "companies": [
+     "Alpine Select (Zug)",
+     "HBM Healthcare Investments (Zug)",
+     "BB Biotech",
+     "Partners Group Private Equity (Master Fund)",
+     "Spice / Castle Private Equity / other listed PE vehicles in Zug/Zurich",
+     "Swisscom Beteiligungen / Swisscom Ventures",
+     "Migros-Genossenschafts-Bund — Corporate Development / M&A / Beteiligungen (Zurich)",
+     "Coop (only Zurich-based M&A roles)",
+     "TX Group / Ringier / SMG Swiss Marketplace Group — M&A, Corporate Development, Ventures (Zurich)",
+     "Implenia / Halter / other Zurich groups with Beteiligungs-Management roles",
+     "Schweizerische Post / SBB — only M&A / Beteiligungen roles in Zurich"
+    ],
+    "focus": "Beteiligungsmanagement, M&A, Corporate Development, Investment Analyst roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "corp-mna-1",
+    "title": "Konzerne mit M&A / Corporate Development (1) — Zug & Schwyz",
+    "companies": [
+     "Glencore (Baar)",
+     "Holcim (Zug)",
+     "Sika (Baar)",
+     "Kuehne+Nagel (Schindellegi SZ)",
+     "Coca-Cola HBC (Zug)",
+     "Transocean (Steinhausen)",
+     "Landis+Gyr (Cham)",
+     "Siemens Smart Infrastructure (Zug)",
+     "OC Oerlikon (Pfäffikon SZ)",
+     "Forbo (Baar)",
+     "Schweiter Technologies (Steinhausen)",
+     "Metall Zug / V-Zug (Zug)",
+     "Bossard (Zug)",
+     "PolyPeptide (Baar)",
+     "Veeam (Baar) — finance roles"
+    ],
+    "focus": "Graduate programmes (finance/business), Corporate Development, M&A, Strategy, Group Treasury, FP&A, Investor Relations entry roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "corp-mna-2",
+    "title": "Konzerne mit M&A / Corporate Development (2) — Zürich, Winterthur, Baden",
+    "companies": [
+     "ABB (Zurich)",
+     "Hitachi Energy (Zurich)",
+     "Accelleron (Baden)",
+     "Axpo (Baden)",
+     "Swisscom (Corporate Development / M&A / Graduate)",
+     "Amcor (Zurich)",
+     "Mettler-Toledo (Greifensee)",
+     "Barry Callebaut (Zurich)",
+     "Lindt & Sprüngli (Kilchberg)",
+     "DKSH (Zurich)",
+     "Adecco Group (Zurich)",
+     "Sulzer (Winterthur)",
+     "Implenia (Opfikon)",
+     "Georg Fischer (Schaffhausen)",
+     "Geberit (Rapperswil-Jona)",
+     "Kardex / Belimo / u-blox / Huber+Suhner / Sensirion (Zurich region)",
+     "Flughafen Zürich / Swiss International Air Lines (Kloten)",
+     "Schindler (Ebikon) / Emmi (Luzern)",
+     "Chubb / Zurich (skip if covered)"
+    ],
+    "focus": "Graduate programmes (finance/business), Corporate Development, M&A, Strategy, Treasury, FP&A, Investor Relations entry roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "consulting-strategy",
+    "title": "Strategieberatungen",
+    "companies": [
+     "McKinsey & Company (Zurich)",
+     "Boston Consulting Group (Zurich)",
+     "Bain & Company (Zurich)",
+     "Oliver Wyman (Zurich)",
+     "Roland Berger (Zurich)",
+     "Kearney (Zurich)",
+     "Strategy& (Zurich)",
+     "Arthur D. Little (Zurich)",
+     "L.E.K. Consulting (Zurich)",
+     "Simon-Kucher (Zurich)",
+     "Monitor Deloitte (Zurich)",
+     "EY-Parthenon (Zurich)",
+     "Accenture Strategy (Zurich)",
+     "Porsche Consulting (Zurich)",
+     "goetzpartners (Zurich)",
+     "Implement Consulting Group (Zurich)",
+     "Iskander Business Partner (Zurich)",
+     "OC&C / Stern Stewart / Horváth strategy (Zurich if any)"
+    ],
+    "focus": "Business Analyst, Associate, Junior Consultant, Fellow, Graduate roles; also specialist research/knowledge analyst roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "big4-deals-restructuring",
+    "title": "Big 4 Deals/Valuation & Restructuring-Berater",
+    "companies": [
+     "Deloitte (Zurich) — Financial Advisory, M&A, Valuation, Consulting graduate roles",
+     "PwC Switzerland (Zurich) — Deals, Valuation, Transaction Services, Advisory",
+     "KPMG Switzerland (Zurich) — Deal Advisory, Corporate Finance, Valuation, Consulting",
+     "EY Switzerland (Zurich) — Strategy and Transactions, Valuation, Consulting",
+     "BDO (Zurich)",
+     "Grant Thornton (Zurich)",
+     "Forvis Mazars (Zurich)",
+     "Alvarez & Marsal (Zurich)",
+     "FTI Consulting (Zurich)",
+     "AlixPartners (Zurich)",
+     "Kroll (Zurich)",
+     "Protiviti (Zurich)"
+    ],
+    "focus": "Each Big 4 posts many Zurich graduate roles — run several queries each (Absolvent, Graduate, Consultant, Associate, Valuation, M&A, Financial Services).",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "consulting-fs-econ",
+    "title": "Finanzdienstleistungs-, Management- & Ökonomieberatungen",
+    "companies": [
+     "Synpulse (Zurich)",
+     "zeb (Zurich)",
+     "Q_PERIOR / Wavestone (Zurich)",
+     "Capco (Zurich)",
+     "BearingPoint (Zurich)",
+     "Horváth (Zurich)",
+     "Accenture (Zurich — financial services consulting)",
+     "Capgemini Invent (Zurich)",
+     "IBM Consulting (Zurich)",
+     "Helbling Business Advisors (Zurich)",
+     "PPI Schweiz",
+     "Infosys Consulting (Zurich)",
+     "Frontier Economics (Zurich)",
+     "Swiss Economics (Zurich)",
+     "Compass Lexecon / Charles River Associates / NERA / Oxera / Analysis Group (Zurich if any)",
+     "Polynomics / Ecoplan / INFRAS / BAK Economics (Zurich region roles)"
+    ],
+    "focus": "Junior Consultant, Business Analyst, Economist / Analyst roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   }
+  ]
+ },
+ {
+  "group": "G-Keyword-2",
+  "batches": [
+   {
+    "id": "kw-pharma-business",
+    "mode": "keyword",
+    "theme": "Business / finance entry roles at pharma, biotech and medtech companies in Zug, Rotkreuz, Baar, Zurich, Schwyz",
+    "queries": [
+     "Finance Graduate Program pharma Zug",
+     "Business Analyst pharma Zug",
+     "Commercial Excellence Analyst Zug",
+     "Market Access Junior Zug",
+     "Business Development Licensing Analyst Zurich",
+     "Controlling Pharma Einstieg Zug",
+     "FP&A Analyst Rotkreuz",
+     "Graduate Program pharma Switzerland 2027",
+     "Financial Analyst Baar pharma",
+     "Strategy Analyst biotech Zurich"
+    ],
+    "status": "teilweise (ca. 8 Suchen)",
+    "erfolgreiche_suchen": 8
+   },
+   {
+    "id": "kw-corpdev-holding",
+    "mode": "keyword",
+    "theme": "Corporate development, M&A, Beteiligungsmanagement, treasury and investor-relations entry roles at corporates and holdings in Zug, Zurich, Schwyz",
+    "queries": [
+     "Corporate Development Analyst Zug",
+     "M&A Analyst Konzern Zürich",
+     "Beteiligungsmanagement Einstieg Zürich",
+     "Investment Manager Holding Zug Junior",
+     "Strategy Analyst Baar",
+     "Group Treasury Analyst Zürich",
+     "Investor Relations Analyst Zürich",
+     "Corporate Finance Analyst Zug",
+     "Beteiligungscontrolling Zürich",
+     "Holding Investment Analyst Schwyz"
+    ],
+    "status": "teilweise (ca. 6 Suchen)",
+    "erfolgreiche_suchen": 6
+   },
+   {
+    "id": "kw-real-estate",
+    "mode": "keyword",
+    "theme": "Real-estate investment, asset management, transaction and valuation entry roles in Zurich, Zug, Schwyz",
+    "queries": [
+     "Junior Asset Manager Immobilien Zürich",
+     "Transaction Analyst Real Estate Zurich",
+     "Portfolio Analyst Immobilien Zug",
+     "Real Estate Investment Analyst Zurich",
+     "Immobilienbewertung Junior Zürich",
+     "Fund Analyst Real Estate Zürich",
+     "Research Analyst Immobilien Zürich",
+     "Real Estate Private Equity Analyst Switzerland",
+     "Junior Portfoliomanager Immobilien Zürich",
+     "Real Estate Graduate Zurich 2026"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-recruiters",
+    "mode": "keyword",
+    "theme": "Postings by financial-services recruiters and headhunters for entry-level roles in Zurich, Zug, Schwyz (PE, AM, WM, HF, family office, IB)",
+    "queries": [
+     "Selby Jennings Zurich Analyst",
+     "Walker Hamill Zurich Analyst",
+     "Robert Walters Zürich Junior Analyst",
+     "Michael Page Zürich Junior Investment",
+     "Hays Zürich Junior Analyst Finance",
+     "Morgan McKinley Zurich Analyst",
+     "Page Executive Zurich Associate",
+     "Mercuri Urval Zürich Absolvent",
+     "recruiter family office Zug analyst",
+     "eFinancialCareers Zurich graduate analyst"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-praktikum-absolventen",
+    "mode": "keyword",
+    "theme": "Graduate-eligible internships (Praktikum nach dem Studium, off-cycle, Hochschulpraktikum) in finance, PE, consulting, real estate in Zurich, Zug, Schwyz",
+    "queries": [
+     "Praktikum nach dem Studium Finance Zürich",
+     "Hochschulpraktikum Zürich Investment",
+     "Graduate internship Private Equity Zurich",
+     "Praktikum Master Absolvent M&A Zürich",
+     "Off-cycle internship Zurich graduates 2026",
+     "Praktikum Asset Management Zürich Absolvent",
+     "Praktikum Private Equity Zug 2026",
+     "Internship Investment Banking Zurich 2027",
+     "Praktikum Family Office Zürich",
+     "Praktikum Immobilien Investment Zürich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-fintech-crypto",
+    "mode": "keyword",
+    "theme": "Fintech and digital-asset entry roles (business, investment, research) in Zurich and Zug",
+    "queries": [
+     "Business Analyst fintech Zurich",
+     "Crypto Analyst Zug",
+     "Digital Assets Associate Zug",
+     "Junior Investment Analyst crypto Zug",
+     "Fintech Graduate Zurich",
+     "Tokenization Analyst Zurich",
+     "Web3 Investment Analyst Zug",
+     "Research Analyst digital assets Zurich",
+     "Strategy Associate fintech Zurich",
+     "Crypto Valley Zug junior finance"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-risk-treasury-valuation",
+    "mode": "keyword",
+    "theme": "Valuation, risk, treasury, investment controlling and performance entry roles in Zurich, Zug, Schwyz",
+    "queries": [
+     "Valuation Analyst Zürich",
+     "Risk Analyst Junior Zurich bank",
+     "Treasury Analyst Zürich Einstieg",
+     "Investment Controlling Junior Zürich",
+     "Financial Analyst Zug",
+     "Performance Analyst Zurich",
+     "Market Risk Analyst Graduate Zurich",
+     "Investment Risk Analyst Zug",
+     "ALM Analyst Zürich",
+     "Fund Accounting Analyst Zürich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-capmarkets-research",
+    "mode": "keyword",
+    "theme": "Equity / credit research, economics and capital-markets entry roles in Zurich",
+    "queries": [
+     "Equity Research Analyst Junior Zürich",
+     "Credit Research Analyst Zürich",
+     "Economist Junior Zürich bank",
+     "Capital Markets Analyst Zürich",
+     "Sales Trading Einstieg Zürich",
+     "Structured Products Analyst Zurich",
+     "Research Associate equity Zurich",
+     "Macro Analyst Zurich",
+     "Investment Research Graduate Zurich",
+     "Volkswirt Einstieg Zürich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-infra-esg",
+    "mode": "keyword",
+    "theme": "Infrastructure, energy-transition, impact and sustainable-finance investment entry roles in Zurich, Zug, Schwyz, Baden",
+    "queries": [
+     "Infrastructure Investment Analyst Zurich",
+     "Energy transition investment Analyst Zug",
+     "Renewable energy investment Analyst Zürich",
+     "Sustainable Finance Analyst Zürich",
+     "Impact Investing Analyst Zurich",
+     "ESG Analyst Zürich Einstieg",
+     "Infrastructure Associate Baar",
+     "Climate investment Analyst Zurich",
+     "Energy M&A Analyst Baden",
+     "Infrastructure Debt Analyst Zurich"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-geo-zug-schwyz",
+    "mode": "keyword",
+    "theme": "Geography-first sweep of Kanton Zug and Kanton Schwyz towns for ANY in-scope entry role (finance, consulting, tech, pharma business, holdings)",
+    "queries": [
+     "Analyst Pfäffikon SZ",
+     "Analyst Freienbach",
+     "Junior Wollerau Finance",
+     "Analyst Schindellegi",
+     "Analyst Lachen SZ",
+     "Analyst Baar",
+     "Analyst Cham ZG finance",
+     "Analyst Rotkreuz business",
+     "Analyst Steinhausen",
+     "Junior Analyst Zug 2026"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "kw-geo-zh-periphery",
+    "mode": "keyword",
+    "theme": "Geography-first sweep of Zurich suburbs and nearby towns for ANY in-scope entry role (finance, consulting, tech business, pharma business, holdings)",
+    "queries": [
+     "Analyst Winterthur finance",
+     "Analyst Opfikon Glattbrugg",
+     "Analyst Wallisellen",
+     "Analyst Kloten business",
+     "Analyst Schlieren",
+     "Analyst Küsnacht",
+     "Analyst Thalwil",
+     "Analyst Baden AG finance",
+     "Analyst Rapperswil-Jona",
+     "Analyst Kilchberg Rüschlikon"
+    ],
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   }
+  ]
+ },
+ {
+  "group": "E-RE-Tech-Pharma",
+  "batches": [
+   {
+    "id": "re-listed",
+    "title": "Kotierte Immobiliengesellschaften & Immobilien-Investoren",
+    "companies": [
+     "Swiss Prime Site (Zug/Zurich) incl. Swiss Prime Site Solutions",
+     "PSP Swiss Property (Zug/Zurich)",
+     "Allreal (Baar/Zurich)",
+     "Mobimo (Küssnacht SZ / Zurich)",
+     "Zug Estates (Zug)",
+     "Intershop (Zurich)",
+     "Plazza (Zurich)",
+     "Cham Group (Cham)",
+     "Novavest (Zurich)",
+     "Ina Invest (Opfikon)",
+     "HIAG (Zurich office)",
+     "Peach Property (Zurich)",
+     "Investis (Zurich)",
+     "Varia US Properties / Stoneweg (Zug)",
+     "SF Urban Properties / Swiss Finance & Property (Zurich)",
+     "Helvetica Property (Zurich)",
+     "Fundamenta Group (Zug/Baar)",
+     "Empira (Zug)",
+     "Patrimonium (Baar)",
+     "AFIAA (Zurich)"
+    ],
+    "focus": "Junior Asset Manager, Transaction Analyst, Portfolio Analyst, Investment Analyst, Fund Analyst, Controlling roles — high fit for the candidate.",
+    "status": "teilweise (ca. 8 Suchen)",
+    "erfolgreiche_suchen": 8
+   },
+   {
+    "id": "re-fund-managers",
+    "title": "Immobilien-Fondsleitungen, Anlagestiftungen & Entwickler",
+    "companies": [
+     "UBS Real Estate / UBS AM Real Estate & Private Markets (Zurich)",
+     "Swiss Life Asset Managers Real Estate (Zurich)",
+     "Zurich Invest / Zurich Anlagestiftung Immobilien",
+     "AXA IM Alts Real Estate (Zurich)",
+     "Swisscanto Real Estate (ZKB)",
+     "Pensimo / Turidomus / Adimora (Zurich)",
+     "Avadis Anlagestiftung",
+     "BVK Immobilien",
+     "Baloise Asset Management Real Estate (Zurich office)",
+     "Helvetia Real Estate",
+     "J. Safra Sarasin Real Estate",
+     "Edmond de Rothschild Real Estate / Procimmo / Nova Property / Streetbox (Zurich offices)",
+     "Crowdhouse (Zurich)",
+     "Epic Suisse (Zurich)",
+     "PATRIZIA (Zurich)",
+     "Implenia Real Estate (Opfikon)",
+     "Halter (Schlieren)",
+     "HRS Real Estate / Senn / Steiner / Losinger Marazzi (Zurich offices)",
+     "Livit / Wincasa / Privera (only asset / portfolio management roles)"
+    ],
+    "focus": "Junior Asset Manager, Portfolio/Investment Analyst, Transaction, Fund Controlling, Research roles.",
+    "status": "teilweise (ca. 8 Suchen)",
+    "erfolgreiche_suchen": 8
+   },
+   {
+    "id": "re-advisory",
+    "title": "Immobilienberatung, Bewertung & Research",
+    "companies": [
+     "Wüest Partner (Zurich)",
+     "IAZI (Zurich)",
+     "Fahrländer Partner (Zurich)",
+     "JLL (Zurich)",
+     "CBRE (Zurich)",
+     "Colliers (Zurich)",
+     "Cushman & Wakefield (Zurich)",
+     "Savills / Knight Frank (Zurich if any)",
+     "Kuoni Mueller & Partner (Zurich)",
+     "CSL Immobilien (Zurich)",
+     "pom+ (Zurich)",
+     "Drees & Sommer (Zurich)",
+     "PwC / EY / KPMG / Deloitte Real Estate advisory (Zurich)",
+     "Primus Property / other Zurich RE transaction advisers"
+    ],
+    "focus": "Valuation Analyst, Research Analyst, Consultant, Transaction/Capital Markets Analyst entry roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "google-zurich",
+    "title": "Google Zürich (Business-Rollen)",
+    "companies": [
+     "Google Zurich — business (non-engineering) roles only: Finance / FP&A / Treasury, Business Analyst, Strategy & Operations, Business Operations, Program Manager, Associate Product Manager, Account Strategist / Sales, Partnerships, Data / Business Analyst, Trust & Safety analyst, People analyst; also YouTube and Google Cloud business roles in Zurich"
+    ],
+    "focus": "Search google.com/about/careers job titles with 'Zurich' plus LinkedIn; also 'Google Zurich new grad' / 'early career'.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "bigtech-us",
+    "title": "Big Tech / KI-Firmen in Zürich (Business-Rollen)",
+    "companies": [
+     "Microsoft (Zurich)",
+     "Apple (Zurich)",
+     "Meta (Zurich)",
+     "Amazon / AWS (Zurich)",
+     "NVIDIA (Zurich)",
+     "OpenAI (Zurich)",
+     "Anthropic (Zurich)",
+     "Palantir (Zurich) — including business / deployment strategist roles",
+     "Snowflake / Databricks / Stripe / Uber / Airbnb / Booking (Zurich if any)",
+     "Disney Research / Sony / Huawei (Zurich business roles only)"
+    ],
+    "focus": "Non-engineering entry roles: business analyst, finance, strategy & operations, sales / account executive entry, partnerships, program management, deployment strategist.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "enterprise-software",
+    "title": "Enterprise-Software & IT-Dienstleister (Business-Rollen)",
+    "companies": [
+     "Oracle (Zurich)",
+     "Salesforce (Zurich)",
+     "SAP (Regensdorf / Zurich)",
+     "IBM Switzerland (Zurich) incl. IBM Research Rüschlikon business roles",
+     "Cisco (Zurich)",
+     "ServiceNow (Zurich)",
+     "Workday (Zurich)",
+     "Adobe (Zurich)",
+     "Veeam (Baar)",
+     "Bloomberg (Zurich)",
+     "Datadog / HubSpot / Atlassian / Celonis (Zurich if any)",
+     "Siemens (Zurich/Zug — business graduate)"
+    ],
+    "focus": "Graduate / early-career business roles: sales development, account executive entry, business analyst, finance, customer success, solution consultant (business).",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "swiss-tech",
+    "title": "Schweizer Tech-, Telko- & Plattform-Firmen (Business-Rollen)",
+    "companies": [
+     "Swisscom (Zurich — Graduate programmes, Strategy, Finance, Business Analyst)",
+     "Sunrise (Opfikon)",
+     "Salt (Zurich)",
+     "Digitec Galaxus (Zurich)",
+     "On (Zurich)",
+     "GetYourGuide (Zurich)",
+     "Scandit (Zurich)",
+     "Beekeeper (Zurich)",
+     "Climeworks (Zurich)",
+     "SMG Swiss Marketplace Group (Zurich)",
+     "TX Group (Zurich)",
+     "Ringier (Zurich)",
+     "Zühlke (Schlieren)",
+     "Adnovum / ti&m (Zurich)",
+     "Avaloq (Zurich)",
+     "TWINT (Zurich)",
+     "Smallpdf (Zurich)",
+     "Zattoo (Zurich)",
+     "bexio (Rapperswil-Jona)",
+     "Wingtra / ANYbotics / Lakera / DeepJudge (Zurich)",
+     "Sensirion (Stäfa) / u-blox (Thalwil)"
+    ],
+    "focus": "Finance, strategy, business analyst, bizops, product associate, graduate trainee roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "pharma-1",
+    "title": "Pharma in Zug, Rotkreuz, Zürich (1)",
+    "companies": [
+     "Roche (Rotkreuz — Roche Diagnostics International; Roche Pharma Schweiz; any Zurich-region business roles)",
+     "Novartis (Rotkreuz — Novartis Pharma Schweiz; any Zurich-region business roles)",
+     "Takeda (Opfikon / Zurich — international HQ)",
+     "Johnson & Johnson (Zug, Schaffhausen — Innovative Medicine & MedTech)",
+     "Biogen (Baar)",
+     "AbbVie (Cham / Baar)",
+     "Amgen (Rotkreuz)",
+     "Gilead (Zug)",
+     "AstraZeneca (Baar)",
+     "Bristol Myers Squibb (Steinhausen)"
+    ],
+    "focus": "Business roles only: finance graduate programmes, FP&A, controlling, business analyst, commercial excellence, market access, BD&L, strategy, procurement analytics, data/insights analyst.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "pharma-2",
+    "title": "Pharma in Zug, Schwyz, Zürich (2)",
+    "companies": [
+     "Galderma (Zug)",
+     "Viatris (Steinhausen)",
+     "Pfizer (Zurich)",
+     "MSD (Zurich / Luzern)",
+     "Novo Nordisk (Kloten / Zurich)",
+     "Merck (Schweiz) AG (Zug)",
+     "Octapharma (Lachen SZ)",
+     "CSL Vifor (Glattbrugg / Opfikon)",
+     "Sandoz (Rotkreuz / any Zurich-region role)",
+     "Bayer (Zurich)",
+     "Sanofi (Zurich)",
+     "Eli Lilly / UCB / Ipsen / Teva (Zurich-region offices)",
+     "Coloplast (Zug)"
+    ],
+    "focus": "Business roles only: finance graduate programmes, FP&A, controlling, business analyst, commercial excellence, market access, BD&L, strategy, data/insights analyst.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "medtech-biotech",
+    "title": "Medtech & Biotech (Zürich, Zug, Schwyz)",
+    "companies": [
+     "Zimmer Biomet (Winterthur)",
+     "Abbott (Baar)",
+     "Smith+Nephew (Zug/Baar)",
+     "Siemens Healthineers (Zurich)",
+     "Sonova (Stäfa)",
+     "Tecan (Männedorf)",
+     "Biotronik (Bülach)",
+     "Straumann / Medtronic / Stryker / Dentsply Sirona / BD (Zurich-region offices)",
+     "Molecular Partners (Schlieren)",
+     "Neurimmune (Schlieren)",
+     "Numab (Horgen)",
+     "Oculis (Zug)",
+     "Siegfried (Zofingen)",
+     "Dottikon ES",
+     "Schiller (Baar)",
+     "Hocoma / DIH (Volketswil)"
+    ],
+    "focus": "Business roles only: finance, controlling, business development, strategy, M&A, business analyst, commercial analytics, graduate programmes.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   }
+  ]
+ },
+ {
+  "group": "B-AM-Versicherer-HF",
+  "batches": [
+   {
+    "id": "wm-independent",
+    "title": "Unabhängige Vermögensverwalter, Robo-Advisor & Finanzplaner",
+    "companies": [
+     "VZ VermögensZentrum (Zurich — many graduate entry roles)",
+     "Zugerberg Finanz (Zug)",
+     "Swisspartners (Zurich)",
+     "Kendris (Zurich)",
+     "Aquila (Zurich)",
+     "Swiss Rock Asset Management (Zurich)",
+     "Albin Kistler (Zurich)",
+     "WMPartners (Zurich)",
+     "Bellecapital (Zurich)",
+     "Belvédère Asset Management (Zurich)",
+     "Wellershoff & Partners (Zurich)",
+     "True Wealth (Zurich)",
+     "Selma Finance (Zurich)",
+     "VIAC / Terzo (Zurich)",
+     "finpension (Zurich/Luzern)",
+     "Hérens Quality AM / Plurius / other external asset managers in Zurich, Zug, Pfäffikon SZ found via search 'unabhängiger Vermögensverwalter Zürich Junior'"
+    ],
+    "focus": "Junior Portfolio Manager, Investment Analyst, Junior Kundenberater, Finanzplaner Einstieg.",
+    "status": "teilweise (ca. 6 Suchen)",
+    "erfolgreiche_suchen": 6
+   },
+   {
+    "id": "am-swiss",
+    "title": "Schweizer Asset Manager & Investment Consultants",
+    "companies": [
+     "Swisscanto Asset Management (ZKB, Zurich)",
+     "Vontobel Asset Management (Zurich)",
+     "GAM Investments (Zurich)",
+     "Bellevue Asset Management (Küsnacht)",
+     "Fisch Asset Management (Zurich)",
+     "Bantleon (Zug)",
+     "Zurich Invest (Zurich)",
+     "Swiss Life Asset Managers (Zurich)",
+     "Unigestion (Zurich office)",
+     "Pictet Asset Management (Zurich)",
+     "Lombard Odier Investment Managers (Zurich)",
+     "OLZ (Zurich)",
+     "PPCmetrics (Zurich)",
+     "Complementa (Zurich/St. Gallen)",
+     "c-alm",
+     "Ethos",
+     "LLB Asset Management / VP Fund Solutions (Zurich)",
+     "Assenagon (Zurich if any)",
+     "Twelve Securis / Plenum Investments (Zurich, ILS)"
+    ],
+    "focus": "Investment Analyst, Junior Portfolio Manager, Research Analyst, Product Specialist, Graduate roles.",
+    "status": "teilweise (ca. 9 Suchen)",
+    "erfolgreiche_suchen": 9
+   },
+   {
+    "id": "am-global-1",
+    "title": "Globale Asset Manager mit Zürcher Büro (1)",
+    "companies": [
+     "BlackRock (Zurich)",
+     "PIMCO (Zurich)",
+     "Invesco (Zurich)",
+     "Robeco Switzerland (Zurich)",
+     "Schroders (Zurich)",
+     "J.P. Morgan Asset Management (Zurich)",
+     "Goldman Sachs Asset Management (Zurich)",
+     "Morgan Stanley Investment Management (Zurich)",
+     "Fidelity International (Zurich)",
+     "Franklin Templeton (Zurich)",
+     "Amundi Suisse (Zurich)",
+     "DWS (Zurich)",
+     "UBS Asset Management (Zurich) — only if not obviously covered by UBS searches"
+    ],
+    "focus": "Any entry-level investment, sales-support/client-service analyst, product or graduate role in Zurich.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "am-global-2",
+    "title": "Globale Asset Manager mit Zürcher Büro (2)",
+    "companies": [
+     "Allianz Global Investors (Zurich)",
+     "AXA Investment Managers (Zurich)",
+     "Wellington Management (Zurich)",
+     "T. Rowe Price (Zurich)",
+     "Vanguard (Zurich)",
+     "State Street Global Advisors (Zurich)",
+     "Nuveen (Zurich)",
+     "Neuberger Berman (Zurich)",
+     "Lazard Asset Management (Zurich)",
+     "Carmignac (Zurich)",
+     "Janus Henderson (Zurich)",
+     "M&G Investments (Zurich)",
+     "Natixis Investment Managers (Zurich)",
+     "Columbia Threadneedle (Zurich)",
+     "Jupiter (Zurich)",
+     "Capital Group (Zurich)",
+     "PGIM (Zurich)",
+     "RBC BlueBay (Zurich)",
+     "abrdn / Candriam / Nordea / Federated Hermes / MFS / Ninety One (Zurich offices)"
+    ],
+    "focus": "Any entry-level investment, client-service, product or graduate role in Zurich.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "data-ratings-valuation",
+    "title": "Finanzdaten, Ratings, Index, ESG-Research & Bewertung",
+    "companies": [
+     "MSCI (Zurich)",
+     "S&P Global (Zurich)",
+     "Moody's (Zurich)",
+     "Morningstar (Zurich)",
+     "Bloomberg (Zurich)",
+     "LSEG / Refinitiv (Zurich)",
+     "FactSet (Zurich)",
+     "SIX Group (Zurich — Financial Information, Swiss Exchange, index)",
+     "Scope Ratings / Fitch (Zurich if any)",
+     "RepRisk (Zurich)",
+     "Inrate (Zurich)",
+     "ISS / Sustainalytics (Zurich if any)",
+     "Kroll (Zurich — valuation)",
+     "Duff & Phelps / Houlihan Lokey valuation (Zurich)"
+    ],
+    "focus": "Analyst, research, data-analytics, valuation, client-analyst entry roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "swissre-zurich-ins",
+    "title": "Swiss Re & Zurich Insurance Group",
+    "companies": [
+     "Swiss Re (Zurich) — Graduate programmes, Asset Management, Capital Markets, Alternative Capital Partners (ILS), Treasury, Finance, Risk, M&A, Economic Research (Swiss Re Institute), Underwriting graduate",
+     "Zurich Insurance Group (Zurich) — Graduate programmes, Investment Management, M&A / Corporate Development, Group Finance, Treasury, Risk, Strategy"
+    ],
+    "focus": "Both are large — run many queries each (graduate, analyst, associate, junior, 2026, 2027).",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "insurers-pension-snb",
+    "title": "Versicherer, Pensionskassen, SNB, FINMA",
+    "companies": [
+     "Swiss Life (Zurich)",
+     "AXA Switzerland (Winterthur) — Investment Management, Finance, Graduate",
+     "Generali Switzerland (Adliswil)",
+     "Allianz Suisse (Wallisellen)",
+     "Helvetia (Zurich)",
+     "Chubb (Zurich)",
+     "Swiss National Bank SNB (Zurich) — Graduate/Trainee, Asset Management, Financial Markets, Economics",
+     "FINMA (Zurich / Bern)",
+     "BVK Personalvorsorge des Kantons Zürich",
+     "Pensionskasse Stadt Zürich PKZH",
+     "Migros-Pensionskasse",
+     "Avadis Vorsorge (Baden)",
+     "Profond (Thalwil)",
+     "Nest Sammelstiftung (Zurich)",
+     "Tellco pk (Schwyz)",
+     "Swisscanto Vorsorge / Stiftung Auffangeinrichtung (Zurich)"
+    ],
+    "focus": "Investment, portfolio, risk, actuarial-finance, economics and graduate/trainee entry roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   },
+   {
+    "id": "hedge-funds-trading",
+    "title": "Hedge Funds, Quant, ILS, Trading & strukturierte Produkte",
+    "companies": [
+     "Man Group (Pfäffikon SZ)",
+     "Quantica Capital (Zurich)",
+     "QCAM Currency Asset Management (Zug)",
+     "1741 Group",
+     "GAM Systematic / Cantab (Zurich)",
+     "UBS O'Connor (Zurich)",
+     "LGT Capital Partners ILS / hedge fund team (Pfäffikon SZ)",
+     "Twelve Securis (Zurich)",
+     "Plenum Investments (Zurich)",
+     "Schroders Capital ILS (Zurich)",
+     "Leonteq (Zurich)",
+     "Picard Angst (Pfäffikon SZ)",
+     "Tolomeo / LTS Investments / Aventicum / other Zurich-Zug-Pfäffikon hedge funds found via search",
+     "Millennium, Balyasny, Squarepoint, Qube, Citadel, IMC, Optiver, Jane Street, Flow Traders — check for any Zurich/Zug office openings",
+     "Axpo Trading (Baden) — trading analyst graduate roles"
+    ],
+    "focus": "Analyst, Junior Trader, Quant Analyst (finance, not pure SWE), Portfolio Analyst, Risk Analyst roles.",
+    "status": "offen",
+    "erfolgreiche_suchen": 0
+   }
+  ]
+ }
+]

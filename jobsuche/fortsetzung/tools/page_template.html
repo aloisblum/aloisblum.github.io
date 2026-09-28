@@ -1,0 +1,230 @@
+<title>Einstiegsstellen Zürich–Zug</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; sticky filter rail on top, job rows below, coverage notes at the end. Colours lean on Zurich's lake blue. */
+:root {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --fg: #14202d;
+  --muted: #5a6776;
+  --line: #dbe2ea;
+  --accent: #14579f;
+  --accent-soft: #e3edf8;
+  --open: #1d7a4b;
+  --open-soft: #e2f3ea;
+  --check: #9a6300;
+  --check-soft: #fbf0d6;
+  --old: #7b8591;
+  --old-soft: #eceff2;
+  --star: #c98a00;
+  --font-display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
+  --font-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1319; --surface: #151c24; --fg: #e6ecf2; --muted: #95a3b3; --line: #253140;
+    --accent: #72a9f2; --accent-soft: #1a2a3d; --open: #5fcf96; --open-soft: #153325;
+    --check: #eec15a; --check-soft: #3a2f14; --old: #8792a0; --old-soft: #1e252e; --star: #f2c14e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1319; --surface: #151c24; --fg: #e6ecf2; --muted: #95a3b3; --line: #253140;
+  --accent: #72a9f2; --accent-soft: #1a2a3d; --open: #5fcf96; --open-soft: #153325;
+  --check: #eec15a; --check-soft: #3a2f14; --old: #8792a0; --old-soft: #1e252e; --star: #f2c14e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: grid; gap: 22px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 5vw, 42px); line-height: 1.08; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.lede { margin: 0; color: var(--muted); max-width: 68ch; }
+.tally { display: flex; flex-wrap: wrap; gap: 8px 18px; font-family: var(--font-data); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tally span { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.dot.open { background: var(--open); } .dot.check { background: var(--check); } .dot.old { background: var(--old); }
+.notice { background: var(--check-soft); border: 1px solid color-mix(in srgb, var(--check) 35%, transparent); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; }
+.notice strong { font-weight: 600; }
+.notice p { margin: 0; max-width: 78ch; }
+.filters { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); padding-block: 10px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.row1 { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+input[type="search"], select { font: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+input[type="search"] { flex: 1 1 240px; }
+select { flex: 0 1 190px; }
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 5px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--fg); }
+.count { font-family: var(--font-data); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: auto; }
+.linkbtn { font: inherit; font-size: 13px; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 4px 2px; }
+.list { display: grid; gap: 8px; }
+.job { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--old); border-radius: 8px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
+.job.s-open { border-left-color: var(--open); } .job.s-check { border-left-color: var(--check); } .job.s-old { opacity: .78; }
+.job > div { min-width: 0; }
+.title { font-weight: 600; font-size: 15.5px; color: var(--fg); text-decoration: none; overflow-wrap: anywhere; }
+.title:hover { color: var(--accent); text-decoration: underline; }
+.meta { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.meta b { color: var(--fg); font-weight: 500; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tag { font-size: 12px; border-radius: 5px; padding: 1px 7px; background: var(--old-soft); color: var(--fg); white-space: nowrap; }
+.tag.st-open { background: var(--open-soft); color: var(--open); font-weight: 600; }
+.tag.st-check { background: var(--check-soft); color: var(--check); font-weight: 600; }
+.tag.st-old { background: var(--old-soft); color: var(--old); font-weight: 600; }
+.tag.fit-hoch { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.note { grid-column: 1 / -1; font-size: 13px; color: var(--muted); margin: 4px 0 0; overflow-wrap: anywhere; }
+.star { background: none; border: 0; cursor: pointer; font-size: 20px; line-height: 1; color: var(--line); padding: 2px 4px; align-self: start; }
+.star[aria-pressed="true"] { color: var(--star); }
+.empty { padding: 28px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; }
+section h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 8px 0 6px; }
+section p { margin: 0 0 10px; max-width: 72ch; color: var(--muted); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.cols > div { min-width: 0; }
+.cols h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+.names { display: flex; flex-wrap: wrap; gap: 6px; }
+.names span { font-size: 12.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px; }
+footer { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+@media (max-width: 560px) { select { flex: 1 1 45%; } .count { margin-left: 0; width: 100%; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Stand 28.09.2026 · Zürich · Zug · Schwyz</div>
+    <h1>Einstiegsstellen Zürich–Zug</h1>
+    <p class="lede">Offene Einstiegs- und Graduate-Stellen in Asset und Wealth Management, Investment Banking, Private Equity, Private Debt, Consulting, Tech, Pharma und Beteiligungsgesellschaften. Jeder Eintrag verlinkt auf einen tatsächlich gefundenen Suchtreffer.</p>
+    <div class="tally" id="tally"></div>
+  </header>
+
+  <div class="notice" role="note">
+    <strong>Die Liste ist noch nicht vollständig.</strong>
+    <p>Die Suche lief in einer Cloud-Sitzung mit höchstens 200 Websuchen. Jobportale wie LinkedIn und jobs.ch waren dort für direkte Abrufe gesperrt. Gründlich durchsucht sind UBS, Partners Group, LGT Capital Partners, Private Debt, Fintech/Krypto, Immobilien-Investoren, unabhängige Vermögensverwalter und Schweizer Asset Manager. Julius Bär, globale Investmentbanken, Beratungen, Big 4, Tech, Pharma und Hedge Funds fehlen noch weitgehend (Liste unten).</p>
+    <p>„Offen? (prüfen)“ heisst: Kein Datum im Suchtreffer. Vor dem Bewerben den Link öffnen und prüfen, ob die Stelle noch ausgeschrieben ist.</p>
+  </div>
+
+  <div class="filters">
+    <div class="row1">
+      <input type="search" id="q" placeholder="Suchen: Firma, Stelle, Ort …" aria-label="Stellen durchsuchen">
+      <select id="sektor" aria-label="Sektor"></select>
+      <select id="stufe" aria-label="Stufe"></select>
+      <select id="kanton" aria-label="Kanton"></select>
+    </div>
+    <div class="row1">
+      <div class="seg" id="status" role="group" aria-label="Status"></div>
+      <div class="seg" id="fit" role="group" aria-label="Fit"></div>
+      <button class="chip" id="onlyStar" aria-pressed="false" type="button">★ Gemerkt</button>
+      <button class="linkbtn" id="reset" type="button">Filter zurücksetzen</button>
+      <span class="count" id="count"></span>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <section>
+    <h2>Abdeckung</h2>
+    <p>Welche Arbeitgeber schon durchsucht sind, welche ohne öffentliche Ausschreibung blieben und welche noch fehlen. Bei Family Offices und Beteiligungsholdings lohnen sich Initiativbewerbungen, weil diese Stellen selten ausgeschrieben werden.</p>
+    <div class="cols">
+      <div><h3>Mit Treffern</h3><div class="names" id="covFound"></div></div>
+      <div><h3>Durchsucht, keine passende Ausschreibung</h3><div class="names" id="covNone"></div></div>
+      <div><h3>Noch nicht durchsucht</h3><div class="names" id="covTodo"></div></div>
+    </div>
+  </section>
+
+  <footer>Quelle: Websuche mit Titeln und Links der Treffer; jede URL ist gegen die Suchergebnisse geprüft. Status-Regel: Intake 2027 im Titel oder neue LinkedIn-ID ergibt „wahrscheinlich offen“, Intake 2025/2026 oder alte ID ergibt „wahrscheinlich abgelaufen“. „Gemerkt“ wird nur in diesem Browser gespeichert.</footer>
+</div>
+
+<script>
+const JOBS = __JOBS__;
+const COVERAGE = __COVERAGE__;
+const STATUS = [
+  { key: 'Wahrscheinlich offen', label: 'Wahrscheinlich offen', cls: 'open' },
+  { key: 'Offen? (prüfen)', label: 'Offen? prüfen', cls: 'check' },
+  { key: 'Wahrscheinlich abgelaufen', label: 'Abgelaufen', cls: 'old' },
+];
+const FITS = ['hoch', 'mittel', 'gering'];
+const state = { q: '', sektor: '', stufe: '', kanton: '', status: new Set(['Wahrscheinlich offen', 'Offen? (prüfen)']), fit: new Set(FITS), onlyStar: false };
+
+let stars = new Set();
+try { stars = new Set(JSON.parse(localStorage.getItem('stars') || '[]')); } catch (e) {}
+function saveStars() { try { localStorage.setItem('stars', JSON.stringify([...stars])); } catch (e) {} }
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function fillSelect(el, label, values) {
+  el.innerHTML = `<option value="">${label}</option>` + values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+}
+const uniq = (k) => [...new Set(JOBS.map((j) => j[k]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
+fillSelect($('sektor'), 'Alle Sektoren', uniq('Sektor'));
+fillSelect($('stufe'), 'Alle Stufen', uniq('Stufe'));
+fillSelect($('kanton'), 'Alle Kantone', uniq('Kanton'));
+
+$('tally').innerHTML = STATUS.map((s) => `<span><i class="dot ${s.cls}"></i>${JOBS.filter((j) => j.Status === s.key).length} ${esc(s.label)}</span>`).join('') + `<span>${JOBS.length} gesamt</span>`;
+
+function chips() {
+  $('status').innerHTML = STATUS.map((s) => `<button type="button" class="chip" data-status="${esc(s.key)}" aria-pressed="${state.status.has(s.key)}"><i class="dot ${s.cls}"></i>${esc(s.label)}</button>`).join('');
+  $('fit').innerHTML = FITS.map((f) => `<button type="button" class="chip" data-fit="${f}" aria-pressed="${state.fit.has(f)}">Fit ${f}</button>`).join('');
+  $('onlyStar').setAttribute('aria-pressed', state.onlyStar);
+}
+
+function jobId(j) { return j.Link; }
+
+function render() {
+  const q = state.q.trim().toLowerCase();
+  const rows = JOBS.filter((j) =>
+    state.status.has(j.Status) && state.fit.has(j.Fit || 'gering') &&
+    (!state.sektor || j.Sektor === state.sektor) && (!state.stufe || j.Stufe === state.stufe) &&
+    (!state.kanton || j.Kanton === state.kanton) && (!state.onlyStar || stars.has(jobId(j))) &&
+    (!q || [j.Arbeitgeber, j.Stelle, j.Ort, j.Sektor, j.Funktion, j.Hinweise].join(' ').toLowerCase().includes(q)));
+  $('count').textContent = `${rows.length} von ${JOBS.length} Stellen`;
+  if (!rows.length) { $('list').innerHTML = '<div class="empty">Keine Stelle passt zu diesen Filtern. Filter lockern oder zurücksetzen.</div>'; return; }
+  $('list').innerHTML = rows.map((j) => {
+    const s = STATUS.find((x) => x.key === j.Status);
+    const ort = [j.Ort, j.Kanton && j.Kanton !== 'Unklar' ? j.Kanton : ''].filter(Boolean).join(' · ');
+    const starred = stars.has(jobId(j));
+    return `<article class="job s-${s.cls}">
+      <div>
+        <a class="title" href="${esc(j.Link)}" target="_blank" rel="noopener">${esc(j.Stelle)}</a>
+        <div class="meta"><b>${esc(j.Arbeitgeber)}</b>${ort ? ' · ' + esc(ort) : ''}${j['Datum / Frist'] ? ' · ' + esc(j['Datum / Frist']) : ''}</div>
+        <div class="tags">
+          <span class="tag st-${s.cls}">${esc(s.label)}</span>
+          ${j.Fit ? `<span class="tag fit-${esc(j.Fit)}">Fit ${esc(j.Fit)}</span>` : ''}
+          ${j.Stufe ? `<span class="tag">${esc(j.Stufe)}</span>` : ''}
+          <span class="tag">${esc(j.Sektor)}</span>
+          <span class="tag">${esc(j.Quelle)}</span>
+        </div>
+      </div>
+      <button class="star" type="button" data-star="${esc(jobId(j))}" aria-pressed="${starred}" aria-label="${starred ? 'Nicht mehr merken' : 'Merken'}">★</button>
+      ${j.Hinweise ? `<p class="note">${esc(j.Hinweise)}</p>` : ''}
+    </article>`;
+  }).join('');
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.status) { const k = b.dataset.status; state.status.has(k) ? state.status.delete(k) : state.status.add(k); chips(); render(); }
+  else if (b.dataset.fit) { const k = b.dataset.fit; state.fit.has(k) ? state.fit.delete(k) : state.fit.add(k); chips(); render(); }
+  else if (b.dataset.star) { const k = b.dataset.star; stars.has(k) ? stars.delete(k) : stars.add(k); saveStars(); render(); }
+  else if (b.id === 'onlyStar') { state.onlyStar = !state.onlyStar; chips(); render(); }
+  else if (b.id === 'reset') {
+    Object.assign(state, { q: '', sektor: '', stufe: '', kanton: '', status: new Set(['Wahrscheinlich offen', 'Offen? (prüfen)']), fit: new Set(FITS), onlyStar: false });
+    ['q', 'sektor', 'stufe', 'kanton'].forEach((id) => { $(id).value = ''; });
+    chips(); render();
+  }
+});
+$('q').addEventListener('input', (e) => { state.q = e.target.value; render(); });
+['sektor', 'stufe', 'kanton'].forEach((id) => $(id).addEventListener('change', (e) => { state[id] = e.target.value; render(); }));
+
+const names = (arr) => arr.map((n) => `<span>${esc(n)}</span>`).join('');
+$('covFound').innerHTML = names(COVERAGE.found);
+$('covNone').innerHTML = names(COVERAGE.none);
+$('covTodo').innerHTML = names(COVERAGE.todo);
+
+chips();
+render();
+</script>
