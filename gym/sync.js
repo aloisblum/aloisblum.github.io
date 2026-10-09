@@ -151,7 +151,9 @@
 
   function sortEntities(type, list) {
     if (type === 'workouts') {
-      return list.sort(function (a, b) { return ts(b.finishedAt || b.startedAt) - ts(a.finishedAt || a.startedAt); });
+      return list.sort(function (a, b) {
+        return ts(b.finishedAt || b.startedAt) - ts(a.finishedAt || a.startedAt) || String(a.id).localeCompare(String(b.id));
+      });
     }
     return list.sort(function (a, b) { return ts(a.createdAt) - ts(b.createdAt) || String(a.id).localeCompare(String(b.id)); });
   }
@@ -162,6 +164,12 @@
    *   changedLocal  – der lokale Stand muss aktualisiert werden
    *   changedRemote – der entfernte Stand muss aktualisiert werden (Push nötig)
    */
+  function sortTombstones(list) {
+    return clone(list || []).sort(function (a, b) {
+      return ts(a.deletedAt) - ts(b.deletedAt) || (a.type + a.id).localeCompare(b.type + b.id);
+    });
+  }
+
   function mergeDocs(local, remote) {
     var L = local || buildDoc({}), R = remote || buildDoc({});
     var merged = { format: DOC_FORMAT, version: DOC_VERSION, updatedAt: null, device: null, tombstones: [] };
@@ -191,14 +199,13 @@
       merged[type] = sortEntities(type, out);
     });
 
-    merged.tombstones = Object.keys(tomb).map(function (k) { return tomb[k]; }).sort(function (a, b) {
-      return ts(a.deletedAt) - ts(b.deletedAt) || (a.type + a.id).localeCompare(b.type + b.id);
-    });
+    merged.tombstones = sortTombstones(Object.keys(tomb).map(function (k) { return tomb[k]; }));
     merged.profile = clone(pickNewer(L.profile || {}, R.profile || {})) || {};
 
+    // Vergleich unabhängig von der Reihenfolge der Listen
     var sameAs = function (doc) {
-      return ENTITY_TYPES.every(function (t) { return canonical(merged[t]) === canonical(doc[t] || []); }) &&
-        canonical(merged.tombstones) === canonical(doc.tombstones || []) &&
+      return ENTITY_TYPES.every(function (t) { return canonical(merged[t]) === canonical(sortEntities(t, clone(doc[t] || []))); }) &&
+        canonical(merged.tombstones) === canonical(sortTombstones(doc.tombstones)) &&
         canonical(merged.profile) === canonical(doc.profile || {});
     };
     var changedLocal = !sameAs(L);
@@ -239,10 +246,11 @@
       return API + '/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path;
     }
     function headers(accept) {
+      // Kein X-GitHub-Api-Version-Header: er ist nicht in GitHubs dokumentierten
+      // CORS-Allow-Headers; ohne ihn gilt die Standardversion 2022-11-28.
       return {
         'Authorization': 'Bearer ' + cfg.token,
         'Accept': accept || 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
       };
     }
     function err(status, message, body) {
@@ -252,14 +260,16 @@
       return e;
     }
     function describe(status, body) {
-      if (status === 401) return 'Token ungültig oder abgelaufen (401).';
+      var msg = body && body.message ? String(body.message) : '';
+      if (status === 401) return 'Token ungültig oder abgelaufen (401) – in den Sync-Einstellungen einen neuen Token eintragen.';
       if (status === 403) {
-        var msg = body && body.message ? String(body.message) : '';
         if (/rate limit/i.test(msg)) return 'GitHub-Limit erreicht, bitte später erneut versuchen (403).';
         return 'Keine Berechtigung – der Token braucht „Contents: Read and write“ für dieses Repository (403).';
       }
       if (status === 404) return 'Repository oder Branch nicht gefunden, oder der Token hat keinen Zugriff (404).';
-      if (status === 409 || status === 422) return 'Konflikt mit einem anderen Gerät, wird erneut versucht.';
+      if (status === 409) return 'Konflikt mit einem anderen Gerät, wird erneut versucht.';
+      if (status === 422) return /sha/i.test(msg) ? 'Konflikt mit einem anderen Gerät, wird erneut versucht.' : 'GitHub hat die Anfrage abgelehnt (422): ' + (msg || 'ungültige Daten') + '.';
+      if (status === 429) return 'GitHub-Limit erreicht, bitte später erneut versuchen (429).';
       return 'GitHub antwortete mit Status ' + status + '.';
     }
     async function parse(res) {
@@ -295,7 +305,8 @@
         if (cfg.branch) payload.branch = cfg.branch;
         var res = await f(url(), { method: 'PUT', headers: Object.assign(headers(), { 'Content-Type': 'application/json' }), body: JSON.stringify(payload) });
         var body = await parse(res);
-        if (res.status === 409 || res.status === 422) { var c = err(res.status, describe(res.status, body), body); c.conflict = true; throw c; }
+        var isConflict = res.status === 409 || (res.status === 422 && /sha/i.test(body && body.message ? String(body.message) : ''));
+        if (isConflict) { var c = err(res.status, describe(res.status, body), body); c.conflict = true; throw c; }
         if (!res.ok) throw err(res.status, describe(res.status, body), body);
         return body && body.content && body.content.sha || null;
       },
@@ -320,9 +331,11 @@
     var now = opts.now || function () { return Date.now(); };
     var fetchImpl = opts.fetch;
     var status = { state: 'off', message: '', lastSyncAt: null, pending: false };
-    var timer = null, running = null, queued = false;
+    var timer = null, running = null, queued = false, failures = 0;
     var DEBOUNCE_MS = opts.debounceMs != null ? opts.debounceMs : 4000;
     var MAX_RETRIES = 3;
+    var BACKOFF_BASE_MS = opts.backoffBaseMs != null ? opts.backoffBaseMs : 5000;
+    var BACKOFF_MAX_MS = 5 * 60 * 1000;
 
     function cfg() { var s = getState(); return s.sync || {}; }
     function enabled() { var c = cfg(); return !!(c.enabled && c.provider === 'github' && c.token && c.owner && c.repo); }
@@ -333,17 +346,20 @@
     }
     function online() { return typeof navigator === 'undefined' || navigator.onLine !== false; }
 
-    // Ein kompletter Abgleich: laden → zusammenführen → lokal übernehmen → bei Bedarf hochladen
+    // Ein kompletter Abgleich: laden → zusammenführen → lokal übernehmen → bei Bedarf hochladen.
+    // Der lokale Stand wird ERST NACH dem Laden gelesen, damit Änderungen während der
+    // Wartezeit (z. B. ein gerade beendetes Training) nicht überschrieben werden.
     async function syncOnce(reason) {
       var s = getState();
       var p = provider();
-      var local = buildDoc(s, now());
       var remote = await p.load();
-      var res = mergeDocs(local, remote.exists && isDoc(remote.doc) ? remote.doc : null);
       if (remote.exists && !isDoc(remote.doc)) {
         var e = new Error('Die Datei im Repository hat ein unbekanntes Format. Bitte einen anderen Dateipfad wählen.');
         e.status = 0; throw e;
       }
+      var revAtBuild = s.sync.rev || 0;                 // Stand der lokalen Daten, der jetzt verarbeitet wird
+      var local = buildDoc(s, now());
+      var res = mergeDocs(local, remote.exists ? remote.doc : null);
       var dataChanged = false;
       if (res.changedLocal) { applyDoc(s, res.merged); dataChanged = true; }
       var sha = remote.sha;
@@ -354,9 +370,24 @@
       s.sync.lastSha = sha;
       s.sync.lastSyncAt = nowIso(now());
       s.sync.lastError = null;
-      s.sync.dirty = false;
+      // Kamen während des Hochladens neue Änderungen hinzu, bleibt "dirty" und ein weiterer Lauf folgt
+      var changedMeanwhile = (s.sync.rev || 0) !== revAtBuild;
+      s.sync.dirty = changedMeanwhile;
       persist();
+      if (changedMeanwhile) queued = true;
       return dataChanged;
+    }
+
+    function transient(e) {
+      if (!e) return true;
+      if (e.status === 401 || e.status === 403 || e.status === 404 || e.status === 422 || e.status === 0) return false;
+      return true; // Netzwerkfehler, 5xx, 429, Konflikte nach Retries
+    }
+    function armRetry() {
+      failures++;
+      var delay = Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * Math.pow(2, failures - 1));
+      delay += Math.floor(Math.random() * delay * 0.25);
+      timerRun(delay);
     }
 
     async function run(reason) {
@@ -374,12 +405,14 @@
             if (e && e.conflict && attempt < MAX_RETRIES) { attempt++; continue; }
             getState().sync.lastError = e && e.message || String(e);
             persist();
-            if (e && (e.status === 401 || e.status === 403 || e.status === 404)) setStatus('error', e.message);
+            if (e && (e.status === 401 || e.status === 403 || e.status === 404 || e.status === 422)) setStatus('error', e.message);
             else if (!online() || (e && e.name === 'TypeError')) setStatus('offline', 'Keine Verbindung zu GitHub – wird später erneut versucht.');
             else setStatus('error', (e && e.message) || 'Synchronisation fehlgeschlagen.');
+            if (transient(e)) armRetry();
             return false;
           }
         }
+        failures = 0;
         status.lastSyncAt = getState().sync.lastSyncAt;
         setStatus('ok', '');
         onChange({ status: status, dataChanged: dataChanged });
@@ -388,15 +421,23 @@
       try { return await running; }
       finally {
         running = null;
-        if (queued) { queued = false; schedule(500); }
+        if (queued) { queued = false; timerRun(500); }
       }
     }
 
-    function schedule(ms) {
-      if (!enabled()) return;
-      var s = getState(); s.sync.dirty = true;
+    function timerRun(ms) {
       clearTimeout(timer);
-      timer = setTimeout(function () { run('change'); }, ms != null ? ms : DEBOUNCE_MS);
+      timer = setTimeout(function () { run('change'); }, ms);
+      if (timer && typeof timer.unref === 'function') timer.unref(); // hält Node-Prozesse (Tests) nicht am Leben
+    }
+
+    // Vom App-Code aufgerufen, wenn sich synchronisierte Daten geändert haben
+    function schedule(ms) {
+      var s = getState();
+      s.sync.rev = (s.sync.rev || 0) + 1;
+      if (!enabled()) return;
+      s.sync.dirty = true;
+      timerRun(ms != null ? ms : DEBOUNCE_MS);
     }
 
     return {
@@ -411,6 +452,7 @@
         return { exists: r.exists, valid: !r.exists || isDoc(r.doc), workouts: r.exists && isDoc(r.doc) ? r.doc.workouts.length : 0 };
       },
       flush: async function (reason) { clearTimeout(timer); return run(reason || 'manual'); },
+      stop: function () { clearTimeout(timer); timer = null; failures = 0; },
     };
   }
 

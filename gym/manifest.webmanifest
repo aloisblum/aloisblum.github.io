@@ -3,6 +3,7 @@
   "short_name": "Gym",
   "description": "Trainingstagebuch mit eigenen Übungen, Sätzen, Wiederholungen und automatischer Progressionsempfehlung.",
   "lang": "de",
+  "id": "/gym/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

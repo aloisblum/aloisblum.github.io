@@ -260,5 +260,81 @@ const ids = (list) => list.map((e) => e.id).sort();
     assert.strictEqual(gh.log.length, 0);
   });
 
+  await test('Training, das WÄHREND des Abgleichs beendet wird, geht nicht verloren', async () => {
+    const gh = fakeGitHub();
+    const A = device('A', gh, { workouts: [wo('w1', 10)] });
+    await A.engine.run();
+    const B = device('B', gh);
+    const origFetch = gh.fetch;
+    let injected = false;
+    const racing = async (url, init) => {
+      const res = await origFetch(url, init);
+      if (!injected && (!init || !init.method || init.method === 'GET')) {
+        injected = true; // Antwort auf den GET ist da, doch bevor sie verarbeitet wird, wird ein Training beendet
+        B.state.workouts.push(wo('w9', 90)); B.engine.schedule();
+      }
+      return res;
+    };
+    B.engine = S.createEngine({ getState: () => B.state, persist: () => {}, onChange: () => {}, fetch: racing, debounceMs: 1, now: () => T0 + 9000 });
+    await B.engine.run();
+    assert.deepStrictEqual(ids(B.state.workouts), ['w1', 'w9']);
+    assert.deepStrictEqual(ids(JSON.parse(gh.o.file).workouts), ['w1', 'w9']);
+  });
+
+  await test('Änderung während des Hochladens hält "dirty" und löst einen weiteren Lauf aus', async () => {
+    const gh = fakeGitHub();
+    const B = device('B', gh, { workouts: [wo('w1', 10)] });
+    const origFetch = gh.fetch;
+    let injected = false;
+    const racing = async (url, init) => {
+      if (!injected && init && init.method === 'PUT') { injected = true; B.state.workouts.push(wo('w2', 20)); B.engine.schedule(); }
+      return origFetch(url, init);
+    };
+    B.engine = S.createEngine({ getState: () => B.state, persist: () => {}, onChange: () => {}, fetch: racing, debounceMs: 1, now: () => T0 + 9000 });
+    await B.engine.run();
+    assert.strictEqual(B.state.sync.dirty, true);
+    await new Promise((r) => setTimeout(r, 600)); // der nachgelagerte Lauf (500 ms)
+    assert.strictEqual(B.state.sync.dirty, false);
+    assert.deepStrictEqual(ids(JSON.parse(gh.o.file).workouts), ['w1', 'w2']);
+  });
+
+  await test('Gleiches Datum → gleiche kanonische Reihenfolge auf beiden Seiten', () => {
+    const a = wo('a', 10), b = wo('b', 10);
+    const L = doc({ workouts: [a, b] }), R = doc({ workouts: [b, a] });
+    const r = S.mergeDocs(L, R);
+    assert.ok(!r.changedLocal && !r.changedRemote);
+  });
+
+  await test('422 ohne sha-Bezug ist ein Fehler, kein Konflikt', async () => {
+    const gh = fakeGitHub();
+    const origFetch = gh.fetch;
+    gh.fetch = async (url, init) => (init && init.method === 'PUT') ? { status: 422, ok: false, text: async () => JSON.stringify({ message: 'Validation Failed' }) } : origFetch(url, init);
+    const A = device('A', gh, { workouts: [wo('w1', 10)] });
+    assert.strictEqual(await A.engine.run(), false);
+    assert.strictEqual(A.engine.status().state, 'error');
+    assert.ok(/422/.test(A.engine.status().message));
+  });
+
+  await test('Vorübergehender Fehler löst Wiederholung mit Backoff aus', async () => {
+    const gh = fakeGitHub();
+    const origFetch = gh.fetch;
+    let calls = 0;
+    gh.fetch = async (url, init) => { calls++; if (calls <= 1) return { status: 500, ok: false, text: async () => '{}' }; return origFetch(url, init); };
+    const state = S.migrateState({ sync: { enabled: true, provider: 'github', token: 'tok', owner: 'me', repo: 'data', path: 'gym/data.json' }, workouts: [wo('w1', 10)] }, T0);
+    const engine = S.createEngine({ getState: () => state, persist: () => {}, onChange: () => {}, fetch: gh.fetch, debounceMs: 1, backoffBaseMs: 20, now: () => T0 + 1000 });
+    assert.strictEqual(await engine.run(), false);
+    await new Promise((r) => setTimeout(r, 120));
+    assert.strictEqual(engine.status().state, 'ok');
+    assert.ok(gh.o.file);
+  });
+
+  await test('Backup-Import mit Exportdatum lässt gelöschte Einträge gelöscht', () => {
+    // Lokal wurde w1 bei Minute 50 gelöscht; ein Backup von Minute 20 enthält w1 ohne updatedAt
+    const local = S.migrateState({ workouts: [], tombstones: [{ id: 'w1', type: 'workout', deletedAt: at(50) }] }, T0);
+    const backup = S.migrateState({ workouts: [{ id: 'w1', name: 'Alt', startedAt: at(0), finishedAt: at(10), entries: [] }] }, new Date(at(20)).getTime());
+    const r = S.mergeDocs(S.buildDoc(local), S.buildDoc(backup));
+    assert.deepStrictEqual(r.merged.workouts, []);
+  });
+
   console.log('\n' + passed + ' Tests bestanden' + (process.exitCode ? ', es gab Fehler' : ''));
 })();

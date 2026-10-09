@@ -25,6 +25,7 @@ const icon = (name, cls) => `<svg class="${cls || ''}" aria-hidden="true"><use h
 const dayKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`; };
 const startOfWeek = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const slug = (str) => String(str).toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 /* ---------- Konstanten ---------- */
 const MUSCLES = ['Brust', 'Rücken', 'Schultern', 'Beine', 'Arme', 'Core', 'Ganzkörper', 'Sonstiges'];
@@ -449,6 +450,7 @@ function loadStarter() {
   STARTER_EXERCISES.forEach(([name, muscle, equipment, repMin, repMax, sets, restSeconds]) => {
     if (byName.has(name.toLowerCase())) return;
     const ex = createExercise({ name, muscle, equipment, repMin, repMax, sets, restSeconds, increment: defaultIncrement(equipment, state.profile.unit) });
+    ex.id = `starter-${slug(name)}`; // feste ID: auf mehreren Geräten geladen → beim Abgleich dieselbe Übung
     if (equipment === 'bodyweight') ex.increment = 0;
     state.exercises.push(ex); byName.set(name.toLowerCase(), ex); added++;
   });
@@ -456,7 +458,7 @@ function loadStarter() {
   STARTER_ROUTINES.forEach(([name, names]) => {
     if (routineNames.has(name.toLowerCase())) return;
     const ids = names.map((n) => byName.get(n.toLowerCase())).filter(Boolean).map((e) => e.id);
-    if (ids.length) state.routines.push({ id: uid(), name, exerciseIds: ids, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    if (ids.length) state.routines.push({ id: `starter-plan-${slug(name)}`, name, exerciseIds: ids, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   });
   saveSynced();
   toast(added ? `${plural(added, 'Übung', 'Übungen')} und 3 Pläne hinzugefügt` : 'Starter-Set ist bereits geladen', 'success');
@@ -572,7 +574,12 @@ function finishWorkout() {
   if (!a) return;
   const entries = a.entries.map((en) => ({
     id: en.id, exerciseId: en.exerciseId, exerciseName: entryName(en), note: (en.note || '').trim(),
-    sets: en.sets.filter((s) => s.done).map((s) => ({ weight: num(s.weight) || 0, reps: num(s.reps) || 0, rpe: num(s.rpe), warmup: !!s.warmup, done: true })),
+    sets: en.sets.filter((s) => s.done).map((s) => {
+      const set = { weight: num(s.weight) || 0, reps: num(s.reps) || 0 };
+      if (num(s.rpe) != null) set.rpe = num(s.rpe);
+      if (s.warmup) set.warmup = true;
+      return set;
+    }),
   })).filter((en) => en.sets.length);
   if (!entries.length) { discardWorkout(); return; }
 
@@ -794,18 +801,36 @@ function deleteRoutine(id) {
 }
 
 /* ---------- Export / Import ---------- */
-function exportData() {
+async function exportData() {
   const copy = JSON.parse(JSON.stringify(state));
-  delete copy.sync; // Token und Geräteeinstellungen gehören nicht in ein Backup
-  state.sync.lastExportAt = new Date().toISOString();
-  save();
-  const blob = new Blob([JSON.stringify(copy, null, 2)], { type: 'application/json' });
+  delete copy.sync;   // Token und Geräteeinstellungen gehören nicht in ein Backup
+  delete copy.active; // laufendes Training ist gerätelokal
+  copy.exportedAt = new Date().toISOString();
+  const json = JSON.stringify(copy, null, 2);
+  const name = `gym-tracker-backup-${dayKey(new Date())}.json`;
+  const markExported = () => { state.sync.lastExportAt = copy.exportedAt; save(); };
+  // iPhone/iPad: Teilen-Dialog (z. B. in „Dateien“ oder iCloud Drive sichern)
+  try {
+    if (platform() === 'ios' && navigator.share && navigator.canShare) {
+      const file = new File([json], name, { type: 'application/json' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Gym Tracker Backup' });
+        markExported(); toast('Backup geteilt', 'success'); render();
+        return;
+      }
+    }
+  } catch (err) {
+    if (err && err.name === 'AbortError') return; // Nutzer hat abgebrochen
+  }
+  const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `gym-tracker-backup-${dayKey(new Date())}.json`;
+  a.href = url; a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  markExported();
   toast('Backup wird heruntergeladen', 'success');
+  render();
 }
 function importData(file) {
   const reader = new FileReader();
@@ -813,14 +838,29 @@ function importData(file) {
     try {
       const data = JSON.parse(reader.result);
       if (!data || !Array.isArray(data.exercises) || !Array.isArray(data.workouts)) throw new Error('Format');
-      const incoming = S.migrateState(sanitize(data));
-      incoming.sync = state.sync; // Sync-Verbindung dieses Geräts behalten, Fremd-Token nie übernehmen
-      incoming.active = state.active;
-      confirmDialog({
-        title: 'Backup importieren?',
-        text: `Das Backup enthält ${plural(incoming.exercises.length, 'Übung', 'Übungen')} und ${plural(incoming.workouts.length, 'Training', 'Trainings')}. Deine aktuellen Daten auf diesem Gerät werden ersetzt${state.sync.enabled ? ' und anschließend mit der Cloud zusammengeführt' : ''}.`,
-        okLabel: 'Importieren', danger: true,
-        onOk: () => { state = incoming; saveSynced(); closeModal(); applyTheme(); render(); toast('Backup importiert', 'success'); },
+      // Alte Backups ohne Zeitstempel bekommen ihr Exportdatum, damit sie neuere lokale Änderungen nicht überschreiben
+      const exportedAt = data.exportedAt ? new Date(data.exportedAt).getTime() : 0;
+      const incoming = S.migrateState(sanitize(data), exportedAt || 1);
+      const hasLocal = state.workouts.length || state.exercises.length;
+      const finish = (msg) => { saveSynced(); closeModal(); applyTheme(); render(); toast(msg, 'success'); };
+      openModal({
+        title: 'Backup importieren',
+        body: () => `<p class="modal-text">Das Backup${data.exportedAt ? ` vom ${esc(fmtDate(data.exportedAt, { day: '2-digit', month: '2-digit', year: 'numeric' }))}` : ''} enthält ${plural(incoming.exercises.length, 'Übung', 'Übungen')} und ${plural(incoming.workouts.length, 'Training', 'Trainings')}.</p>
+          ${hasLocal ? `<p class="modal-text mt"><b>Zusammenführen</b> behält alles, was auf diesem Gerät neuer ist, und ergänzt den Rest aus dem Backup (empfohlen). <b>Ersetzen</b> verwirft die Daten auf diesem Gerät${state.sync.enabled ? ' und gleicht danach mit der Cloud ab' : ''}.</p>` : ''}`,
+        foot: () => `<button class="btn btn-ghost" data-action="modal-close">Abbrechen</button>
+          ${hasLocal ? `<button class="btn btn-danger" data-action="import-replace">Ersetzen</button>` : ''}
+          <button class="btn btn-primary" data-action="import-merge">${hasLocal ? 'Zusammenführen' : 'Importieren'}</button>`,
+        onMerge: () => {
+          const r = S.mergeDocs(S.buildDoc(state), S.buildDoc(incoming));
+          S.applyDoc(state, r.merged);
+          finish('Backup zusammengeführt');
+        },
+        onReplace: () => {
+          const keep = { sync: state.sync, active: state.active, theme: state.profile.theme };
+          state = incoming;
+          state.sync = keep.sync; state.active = keep.active; state.profile.theme = keep.theme;
+          finish('Backup importiert');
+        },
       });
     } catch {
       toast('Datei konnte nicht gelesen werden', 'danger');
@@ -1295,22 +1335,23 @@ function installCard() {
     body = `<p class="small muted">${icon('check')} Läuft als installierte App. Die Daten dieser App sind vom Browser getrennt – mit Cloud-Sync sind sie überall gleich.</p>`;
   } else if (os === 'ios') {
     body = `<ol class="rules">
-      <li>Öffne diese Seite in <b>Safari</b>.</li>
-      <li>Tippe unten auf das <b>Teilen-Symbol</b> (Quadrat mit Pfeil nach oben).</li>
-      <li>Wähle <b>„Zum Home-Bildschirm“</b> und bestätige mit <b>Hinzufügen</b>.</li>
+      <li>Tippe in Safari unten auf das <b>Teilen-Symbol</b> (Quadrat mit Pfeil nach oben). Chrome oder Firefox auf dem iPhone bieten dasselbe im Teilen-Menü.</li>
+      <li>Wähle <b>„Zum Home-Bildschirm“</b>. Lass auf iOS 26 den Schalter <b>„Als Web-App öffnen“</b> eingeschaltet.</li>
+      <li>Bestätige mit <b>Hinzufügen</b> und benutze ab jetzt das neue Icon.</li>
     </ol>
-    <p class="small muted mt-sm">Wichtig: iOS gibt der installierten App einen eigenen Speicher. Richte vorher Cloud-Sync ein oder exportiere ein Backup und importiere es in der App, damit nichts fehlt.</p>`;
+    <p class="small muted mt-sm"><b>Warum installieren:</b> Im normalen Safari-Tab darf iOS die Daten einer Website nach 7 Tagen ohne Nutzung löschen. Die installierte App hat einen eigenen, dauerhaften Speicher – aber eben einen eigenen: Was du hier im Browser eingetragen hast, ist in der App nicht automatisch da. Richte deshalb vor dem Wechsel Cloud-Sync ein (und in der App noch einmal) oder exportiere ein Backup und importiere es in der App.</p>`;
   } else if (installPrompt) {
-    body = `<p class="small muted mb">Installiere die App mit einem Tipp – sie bekommt ein eigenes Icon und läuft im Vollbild.</p>
+    body = `<p class="small muted mb">Installiere die App mit einem Tipp – sie bekommt ein eigenes Icon, läuft im Vollbild und behält ihre Daten, solange du die Browserdaten nicht löschst.</p>
       <button class="btn btn-primary btn-block" data-action="install-app">${icon('smartphone')} App installieren</button>`;
   } else if (os === 'android') {
     body = `<ol class="rules">
       <li>Öffne diese Seite in <b>Chrome</b>.</li>
       <li>Tippe oben rechts auf das <b>Menü ⋮</b>.</li>
-      <li>Wähle <b>„App installieren“</b> bzw. <b>„Zum Startbildschirm hinzufügen“</b>.</li>
-    </ol>`;
+      <li>Wähle je nach Chrome-Version <b>„Installieren und Verknüpfung erstellen“ → Installieren</b>, <b>„App installieren“</b> oder <b>„Zum Startbildschirm hinzufügen“</b>.</li>
+    </ol>
+    <p class="small muted mt-sm">Die installierte App teilt sich den Speicher mit Chrome: Löschst du die Chrome-Browserdaten, sind auch die Trainings weg – mit Cloud-Sync nicht.</p>`;
   } else {
-    body = `<p class="small muted">Am Computer: In Chrome oder Edge erscheint rechts in der Adressleiste ein Installieren-Symbol. Am Handy öffnest du <b>aloisblum.github.io/gym/</b> und fügst die Seite zum Home-Bildschirm hinzu.</p>`;
+    body = `<p class="small muted">Am Computer: In Chrome oder Edge erscheint rechts in der Adressleiste ein Installieren-Symbol (Edge: „App verfügbar“); in Safari auf dem Mac geht es über <b>Ablage → Zum Dock hinzufügen</b>. Am Handy öffnest du <b>aloisblum.github.io/gym/</b> und fügst die Seite zum Home-Bildschirm hinzu.</p>`;
   }
   return `<div class="card"><div class="card-title">Auf dem Handy installieren</div>${body}</div>`;
 }
@@ -1324,14 +1365,14 @@ function openSyncSetup() {
       <form data-form="sync" id="sync-form">
         <ol class="rules mb">
           <li><b>Privates Repository anlegen</b> (einmalig): <a class="link" href="https://github.com/new?name=gym-tracker-daten&visibility=private" target="_blank" rel="noopener">github.com/new ${icon('external')}</a> – Name z. B. <b>gym-tracker-daten</b>, Sichtbarkeit <b>Private</b>, dann „Create repository“.</li>
-          <li><b>Zugriffstoken erstellen:</b> <a class="link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained token ${icon('external')}</a> – unter „Repository access“ <b>Only select repositories</b> → dein Daten-Repository wählen; unter „Permissions → Repository permissions“ bei <b>Contents</b> „Read and write“ setzen; Ablaufdatum wählen; „Generate token“ und den Token kopieren.</li>
+          <li><b>Zugriffstoken erstellen:</b> <a class="link" href="https://github.com/settings/personal-access-tokens/new?name=Gym+Tracker+Sync&contents=write" target="_blank" rel="noopener">Fine-grained token ${icon('external')}</a> – unter „Repository access“ <b>Only select repositories</b> → dein Daten-Repository wählen; unter „Permissions → Repository permissions“ bei <b>Contents</b> „Read and write“ (ist über den Link vorbelegt); bei „Expiration“ ein Datum bis 1 Jahr oder <b>No expiration</b>; „Generate token“ und den Token (beginnt mit <b>github_pat_</b>) sofort kopieren, er wird nur einmal angezeigt.</li>
           <li><b>Hier eintragen</b> und „Verbindung testen“.</li>
         </ol>
         <div class="field"><label for="sync-repo">Repository (Besitzer/Name)</label><input class="input" id="sync-repo" name="repo" placeholder="aloisblum/gym-tracker-daten" value="${esc(repoValue)}" autocomplete="off" autocapitalize="off" spellcheck="false" required></div>
         <div class="field"><label for="sync-token">Zugriffstoken</label>
           <div class="search" style="position:relative"><input class="input" id="sync-token" name="token" type="password" placeholder="github_pat_…" value="${esc(c.token || '')}" autocomplete="off" autocapitalize="off" spellcheck="false" required style="padding-left:12px;padding-right:48px">
           <button type="button" class="btn btn-icon" data-action="toggle-token" style="position:absolute;right:4px;top:3px" aria-label="Token anzeigen">${icon('eye')}</button></div>
-          <div class="hint">Wird nur auf diesem Gerät im Browser gespeichert. Nutze einen Token, der ausschließlich auf das Daten-Repository Zugriff hat.</div></div>
+          <div class="hint">Wird nur in diesem Browser auf diesem Gerät gespeichert (lesbar für alle Seiten unter aloisblum.github.io). Nutze deshalb einen Token, der ausschließlich auf das Daten-Repository Zugriff hat – mehr kann damit niemand anstellen.</div></div>
         <div class="row">
           <div class="field"><label for="sync-path">Dateipfad</label><input class="input" id="sync-path" name="path" value="${esc(c.path || 'gym-tracker/data.json')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
           <div class="field"><label for="sync-branch">Branch (optional)</label><input class="input" id="sync-branch" name="branch" placeholder="Standard" value="${esc(c.branch || '')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
@@ -1386,7 +1427,8 @@ function disconnectSync() {
     text: 'Die Daten bleiben auf diesem Gerät und im Repository erhalten, werden aber nicht mehr abgeglichen. Der Token wird von diesem Gerät gelöscht.',
     okLabel: 'Trennen', danger: true,
     onOk: () => {
-      state.sync = { deviceId: state.sync.deviceId, lastExportAt: state.sync.lastExportAt };
+      engine.stop();
+      state.sync = { deviceId: state.sync.deviceId, lastExportAt: state.sync.lastExportAt, rev: state.sync.rev };
       save(); closeModal(); render(); toast('Cloud-Sync getrennt', 'info');
     },
   });
@@ -1480,8 +1522,10 @@ document.addEventListener('click', (e) => {
 
     case 'toggle-rpe': state.profile.trackRpe = !state.profile.trackRpe; touchProfile(); saveSynced(); render(); break;
     case 'toggle-theme': state.profile.theme = state.profile.theme === 'dark' ? 'light' : 'dark'; save(); render(); break;
-    case 'export': exportData(); render(); break;
+    case 'export': exportData(); break;
     case 'sync-setup': if (modal) closeModal(); openSyncSetup(); break;
+    case 'import-merge': if (modal && modal.onMerge) modal.onMerge(); break;
+    case 'import-replace': if (modal && modal.onReplace) modal.onReplace(); break;
     case 'sync-test': testSyncForm(); break;
     case 'sync-now': engine.flush('manual').then((ok) => { if (!ok && engine.status().state !== 'off') toast(engine.status().message || 'Abgleich fehlgeschlagen', 'danger'); render(); }); renderSyncStatus(); break;
     case 'sync-disconnect': disconnectSync(); break;
