@@ -46,6 +46,99 @@
 
   function clone(v) { return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); }
 
+  /* ---------- Validierung: nur typkorrekte Daten gelangen in die App ---------- */
+  var TOMB_TYPES = { exercise: true, routine: true, workout: true };
+  function str(v) { return typeof v === 'string' ? v : (v === null || v === undefined ? '' : String(v)); }
+  function numOr(v, fallback) {
+    var n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : NaN);
+    return isFinite(n) ? n : fallback;
+  }
+  function cleanId(v) {
+    if (typeof v === 'number' && isFinite(v)) v = String(v);
+    return typeof v === 'string' && v.length > 0 && v.length <= 200 ? v : null;
+  }
+  // Koerziert vorhandene Felder, fügt keine hinzu (damit saubere Daten unverändert bleiben)
+  function coerce(out, src, key, kind) {
+    if (!(key in src)) return;
+    var v = src[key];
+    if (kind === 'str') out[key] = str(v);
+    else if (kind === 'num') { var n = numOr(v, null); if (n === null) delete out[key]; else out[key] = n; }
+    else if (kind === 'numOrNull') { out[key] = (v === null || v === undefined || v === '') ? null : numOr(v, null); }
+    else if (kind === 'bool') out[key] = !!v;
+    else if (kind === 'id') { var id = cleanId(v); out[key] = id; }
+  }
+  function cleanSet(set) {
+    if (!isObject(set)) return null;
+    var out = Object.assign({}, set);
+    out.weight = numOr(set.weight, 0);
+    out.reps = Math.max(0, Math.round(numOr(set.reps, 0)));
+    coerce(out, set, 'rpe', 'numOrNull');
+    coerce(out, set, 'warmup', 'bool');
+    coerce(out, set, 'done', 'bool');
+    return out;
+  }
+  function cleanEntity(type, e) {
+    if (!isObject(e)) return null;
+    var id = cleanId(e.id);
+    if (!id) return null;
+    var out = Object.assign({}, e, { id: id });
+    ['createdAt', 'updatedAt'].forEach(function (k) { coerce(out, e, k, 'str'); });
+    if (type === 'exercises') {
+      out.name = str(e.name).slice(0, 120);
+      if (!out.name) return null;
+      ['muscle', 'equipment', 'notes'].forEach(function (k) { coerce(out, e, k, 'str'); });
+      ['repMin', 'repMax', 'sets', 'increment'].forEach(function (k) { coerce(out, e, k, 'num'); });
+      coerce(out, e, 'restSeconds', 'numOrNull');
+    } else if (type === 'routines') {
+      out.name = str(e.name).slice(0, 120);
+      if (!out.name) return null;
+      out.exerciseIds = Array.isArray(e.exerciseIds) ? e.exerciseIds.map(cleanId).filter(Boolean) : [];
+    } else {
+      out.name = str(e.name).slice(0, 120) || 'Training';
+      ['startedAt', 'finishedAt'].forEach(function (k) { coerce(out, e, k, 'str'); });
+      coerce(out, e, 'routineId', 'id');
+      if (!Array.isArray(e.entries)) return null;
+      out.entries = e.entries.filter(isObject).map(function (en) {
+        var o = Object.assign({}, en);
+        coerce(o, en, 'id', 'id');
+        coerce(o, en, 'exerciseId', 'id');
+        ['exerciseName', 'note'].forEach(function (k) { coerce(o, en, k, 'str'); });
+        o.sets = Array.isArray(en.sets) ? en.sets.map(cleanSet).filter(Boolean) : [];
+        return o;
+      });
+    }
+    return out;
+  }
+  function cleanList(type, list) {
+    return (Array.isArray(list) ? list : []).map(function (e) { return cleanEntity(type, e); }).filter(Boolean);
+  }
+  function cleanTombstones(list) {
+    return (Array.isArray(list) ? list : []).filter(function (t) {
+      return isObject(t) && cleanId(t.id) && TOMB_TYPES[t.type] && str(t.deletedAt);
+    }).map(function (t) { return { id: cleanId(t.id), type: t.type, deletedAt: str(t.deletedAt) }; });
+  }
+  // Profil: nur bekannte Felder, ungültige Werte werden durch den bisherigen Wert ersetzt
+  function cleanProfile(p, current) {
+    var cur = isObject(current) ? current : {};
+    var src = isObject(p) ? p : {};
+    var out = {};
+    if ('name' in src) out.name = str(src.name).slice(0, 80);
+    if ('unit' in src) out.unit = (src.unit === 'kg' || src.unit === 'lb') ? src.unit : (cur.unit === 'lb' ? 'lb' : 'kg');
+    if ('restSeconds' in src) { var r = numOr(src.restSeconds, null); out.restSeconds = (r !== null && r >= 0) ? Math.round(r) : (numOr(cur.restSeconds, 90)); }
+    if ('trackRpe' in src) out.trackRpe = !!src.trackRpe;
+    if ('theme' in src) out.theme = src.theme === 'light' ? 'light' : 'dark';
+    if ('updatedAt' in src) out.updatedAt = str(src.updatedAt);
+    return out;
+  }
+  function cleanDoc(doc, currentProfile) {
+    var d = isObject(doc) ? doc : {};
+    var out = Object.assign({}, d);
+    ENTITY_TYPES.forEach(function (t) { out[t] = cleanList(t, d[t]); });
+    out.tombstones = cleanTombstones(d.tombstones);
+    out.profile = cleanProfile(d.profile, currentProfile);
+    return out;
+  }
+
   function ts(v) {
     var t = v ? new Date(v).getTime() : NaN;
     return isNaN(t) ? 0 : t;
@@ -82,17 +175,15 @@
     var s = state || {};
     var stamp = nowIso(now);
     s.version = 2;
-    s.profile = isObject(s.profile) ? s.profile : {};
+    s.profile = cleanProfile(s.profile, {});
     if (!s.profile.updatedAt) s.profile.updatedAt = stamp;
     ENTITY_TYPES.forEach(function (type) {
-      if (!Array.isArray(s[type])) s[type] = [];
-      s[type] = s[type].filter(function (e) { return isObject(e) && e.id; });
+      s[type] = cleanList(type, s[type]);
       s[type].forEach(function (e) {
         if (!e.updatedAt) e.updatedAt = e.finishedAt || e.createdAt || stamp;
       });
     });
-    if (!Array.isArray(s.tombstones)) s.tombstones = [];
-    s.tombstones = s.tombstones.filter(function (t) { return isObject(t) && t.id && t.type && t.deletedAt; });
+    s.tombstones = cleanTombstones(s.tombstones);
     if (!isObject(s.sync)) s.sync = {};
     if (!s.sync.deviceId) s.sync.deviceId = randomId();
     return s;
@@ -124,18 +215,18 @@
 
   // Übernimmt die synchronisierten Teile eines Dokuments in den lokalen Zustand
   function applyDoc(state, doc) {
-    var incoming = clone(doc.profile) || {};
+    var incoming = cleanProfile(doc.profile, state.profile);
     LOCAL_PROFILE_KEYS.forEach(function (k) { delete incoming[k]; });
     state.profile = Object.assign({}, state.profile || {}, incoming);
-    ENTITY_TYPES.forEach(function (t) { state[t] = clone(doc[t]) || []; });
-    state.tombstones = clone(doc.tombstones) || [];
+    ENTITY_TYPES.forEach(function (t) { state[t] = cleanList(t, clone(doc[t])); });
+    state.tombstones = cleanTombstones(clone(doc.tombstones));
     return state;
   }
 
   /* ---------- Merge ---------- */
 
   function indexById(list) {
-    var map = {};
+    var map = Object.create(null); // prototypfrei: auch eine ID "__proto__" ist ein normaler Schlüssel
     (list || []).forEach(function (e) { if (e && e.id) map[e.id] = e; });
     return map;
   }
@@ -171,11 +262,12 @@
   }
 
   function mergeDocs(local, remote) {
-    var L = local || buildDoc({}), R = remote || buildDoc({});
+    var L = cleanDoc(local || buildDoc({}), {});
+    var R = cleanDoc(remote || buildDoc({}), L.profile);
     var merged = { format: DOC_FORMAT, version: DOC_VERSION, updatedAt: null, device: null, tombstones: [] };
 
     // Löschmarker: pro (typ,id) der späteste
-    var tomb = {};
+    var tomb = Object.create(null);
     [].concat(L.tombstones || [], R.tombstones || []).forEach(function (t) {
       if (!t || !t.id || !t.type) return;
       var key = t.type + ':' + t.id;
@@ -184,7 +276,7 @@
 
     ENTITY_TYPES.forEach(function (type) {
       var li = indexById(L[type]), ri = indexById(R[type]);
-      var ids = {};
+      var ids = Object.create(null);
       Object.keys(li).forEach(function (id) { ids[id] = true; });
       Object.keys(ri).forEach(function (id) { ids[id] = true; });
       var out = [];
@@ -241,9 +333,15 @@
   function githubProvider(cfg, fetchImpl) {
     var f = fetchImpl || (typeof fetch === 'function' ? fetch.bind(self) : null);
     var API = 'https://api.github.com';
+    function repoUrl() {
+      return API + '/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo);
+    }
     function url() {
-      var path = String(cfg.path || 'gym-tracker/data.json').replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
-      return API + '/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path;
+      var segments = String(cfg.path || 'gym-tracker/data.json').replace(/^\/+/, '').split('/');
+      if (segments.some(function (seg) { return !seg || seg === '.' || seg === '..'; })) {
+        var bad = new Error('Ungültiger Dateipfad: „' + cfg.path + '“.'); bad.status = 0; throw bad;
+      }
+      return repoUrl() + '/contents/' + segments.map(encodeURIComponent).join('/');
     }
     function headers(accept) {
       // Kein X-GitHub-Api-Version-Header: er ist nicht in GitHubs dokumentierten
@@ -278,6 +376,20 @@
     }
     return {
       name: 'github',
+      // Prüft Repository, Branch und Schreibrecht (404 beim Dateipfad allein ist mehrdeutig)
+      check: async function () {
+        var res = await f(repoUrl(), { headers: headers(), cache: 'no-store' });
+        var body = await parse(res);
+        if (res.status === 404) throw err(404, 'Repository nicht gefunden oder der Token hat keinen Zugriff darauf (404). Prüfe Besitzer/Name und die Repository-Auswahl des Tokens.', body);
+        if (!res.ok) throw err(res.status, describe(res.status, body), body);
+        if (body && body.permissions && body.permissions.push === false) throw err(403, 'Der Token darf in diesem Repository nicht schreiben – „Contents: Read and write“ fehlt (403).', body);
+        if (cfg.branch) {
+          var b = await f(repoUrl() + '/branches/' + encodeURIComponent(cfg.branch), { headers: headers(), cache: 'no-store' });
+          if (b.status === 404) throw err(404, 'Branch „' + cfg.branch + '“ nicht gefunden (404).', null);
+          if (!b.ok) throw err(b.status, describe(b.status, await parse(b)), null);
+        }
+        return { defaultBranch: body && body.default_branch || null, isPrivate: !!(body && body.private) };
+      },
       // Liefert { exists, sha, doc }
       load: async function () {
         var q = cfg.branch ? '?ref=' + encodeURIComponent(cfg.branch) : '';
@@ -303,7 +415,10 @@
         var payload = { message: message || 'Gym Tracker Sync', content: utf8ToBase64(JSON.stringify(doc)) };
         if (sha) payload.sha = sha;
         if (cfg.branch) payload.branch = cfg.branch;
-        var res = await f(url(), { method: 'PUT', headers: Object.assign(headers(), { 'Content-Type': 'application/json' }), body: JSON.stringify(payload) });
+        var bodyText = JSON.stringify(payload);
+        var init = { method: 'PUT', headers: Object.assign(headers(), { 'Content-Type': 'application/json' }), body: bodyText };
+        if (bodyText.length < 60000) init.keepalive = true; // überlebt das Schließen der Seite (Limit 64 KiB)
+        var res = await f(url(), init);
         var body = await parse(res);
         var isConflict = res.status === 409 || (res.status === 422 && /sha/i.test(body && body.message ? String(body.message) : ''));
         if (isConflict) { var c = err(res.status, describe(res.status, body), body); c.conflict = true; throw c; }
@@ -448,8 +563,9 @@
       // Verbindung prüfen (ohne lokale Daten zu verändern)
       test: async function (c) {
         var p = githubProvider(c, fetchImpl);
+        var info = await p.check();
         var r = await p.load();
-        return { exists: r.exists, valid: !r.exists || isDoc(r.doc), workouts: r.exists && isDoc(r.doc) ? r.doc.workouts.length : 0 };
+        return { exists: r.exists, valid: !r.exists || isDoc(r.doc), workouts: r.exists && isDoc(r.doc) ? r.doc.workouts.length : 0, isPrivate: info.isPrivate };
       },
       flush: async function (reason) { clearTimeout(timer); return run(reason || 'manual'); },
       stop: function () { clearTimeout(timer); timer = null; failures = 0; },
@@ -460,6 +576,7 @@
     DOC_FORMAT: DOC_FORMAT,
     DOC_VERSION: DOC_VERSION,
     canonical: canonical,
+    cleanDoc: cleanDoc,
     migrateState: migrateState,
     buildDoc: buildDoc,
     isDoc: isDoc,

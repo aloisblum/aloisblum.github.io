@@ -133,6 +133,8 @@ const ids = (list) => list.map((e) => e.id).sort();
       if (o.fail === 'network') throw new TypeError('Failed to fetch');
       if (auth !== 'Bearer ' + o.token) return res(401, { message: 'Bad credentials' });
       if (o.fail === 403) return res(403, { message: 'Resource not accessible by personal access token' });
+      if (/\/repos\/me\/data$/.test(url)) return res(200, { default_branch: 'main', private: true, permissions: { push: o.readonly ? false : true, pull: true } });
+      if (/\/repos\/me\/data\/branches\//.test(url)) return res(/\/main$/.test(url) ? 200 : 404, {});
       if (!/\/repos\/me\/data\/contents\//.test(url)) return res(404, { message: 'Not Found' });
       if (!init.method || init.method === 'GET') {
         if (o.file == null) return res(404, { message: 'Not Found' });
@@ -334,6 +336,73 @@ const ids = (list) => list.map((e) => e.id).sort();
     const backup = S.migrateState({ workouts: [{ id: 'w1', name: 'Alt', startedAt: at(0), finishedAt: at(10), entries: [] }] }, new Date(at(20)).getTime());
     const r = S.mergeDocs(S.buildDoc(local), S.buildDoc(backup));
     assert.deepStrictEqual(r.merged.workouts, []);
+  });
+
+  await test('ID "__proto__" geht beim Merge nicht verloren', () => {
+    const L = doc({ exercises: [ex('__proto__', 'Seltsam', 1), ex('ok', 'Ok', 1)] });
+    const r = S.mergeDocs(L, doc({}));
+    assert.deepStrictEqual(ids(r.merged.exercises), ['__proto__', 'ok']);
+  });
+
+  await test('Kaputte oder manipulierte Einträge aus der Cloud werden verworfen bzw. typisiert', () => {
+    const R = doc({
+      workouts: [{ id: 'c', updatedAt: at(99) }, { id: 'ok', name: 42, startedAt: at(0), finishedAt: at(5), updatedAt: at(5), entries: [{ exerciseName: 'a', sets: [{ weight: '60', reps: '<img src=x>' }, { weight: 'x', reps: '8', rpe: '7,5' }] }] }],
+      exercises: [{ id: 'e1', name: '<b>x</b>', repMin: '8', repMax: 'abc', sets: 3, updatedAt: at(1) }, { id: null, name: 'ohne id' }, { id: 'e2', updatedAt: at(1) }],
+      routines: [{ id: 'r1', name: 'Plan', exerciseIds: 'nicht-array', updatedAt: at(1) }],
+      profile: { name: 'Remote', unit: '<img src=x onerror=alert(1)>', restSeconds: 'abc', trackRpe: 'yes', evil: 1, updatedAt: at(50) },
+    });
+    const L = doc({ profile: { name: 'Lokal', unit: 'lb', restSeconds: 120, updatedAt: at(1) } });
+    const r = S.mergeDocs(L, R);
+    assert.deepStrictEqual(ids(r.merged.workouts), ['ok']);
+    const w = r.merged.workouts[0];
+    assert.strictEqual(w.name, '42');
+    assert.deepStrictEqual(w.entries[0].sets.map((x) => [x.weight, x.reps, x.rpe]), [[60, 0, undefined], [0, 8, 7.5]]);
+    assert.deepStrictEqual(ids(r.merged.exercises), ['e1']);
+    assert.strictEqual(r.merged.exercises[0].name, '<b>x</b>'); // Text bleibt Text, die Anzeige escaped
+    assert.strictEqual(r.merged.exercises[0].repMin, 8);
+    assert.strictEqual('repMax' in r.merged.exercises[0], false);
+    assert.deepStrictEqual(r.merged.routines[0].exerciseIds, []);
+    assert.strictEqual(r.merged.profile.unit, 'lb');      // ungültige Einheit → lokaler Wert
+    assert.strictEqual(r.merged.profile.restSeconds, 120);
+    assert.strictEqual(r.merged.profile.trackRpe, true);
+    assert.strictEqual('evil' in r.merged.profile, false);
+  });
+
+  await test('Saubere Dokumente bleiben durch die Validierung unverändert (kein Dauer-Push)', () => {
+    const L = doc({ exercises: [ex('a', 'Bank', 1)], workouts: [{ id: 'w', name: 'T', startedAt: at(0), finishedAt: at(5), updatedAt: at(5), entries: [{ exerciseId: 'a', exerciseName: 'Bank', note: '', sets: [{ weight: 60, reps: 10, rpe: null, warmup: false, done: true }] }] }] });
+    const r = S.mergeDocs(L, JSON.parse(JSON.stringify(L)));
+    assert.ok(!r.changedLocal && !r.changedRemote);
+  });
+
+  await test('Verbindungstest: fehlendes Repository oder fehlendes Schreibrecht werden erkannt', async () => {
+    const gh = fakeGitHub();
+    const A = device('A', gh);
+    await assert.rejects(A.engine.test({ token: 'tok', owner: 'me', repo: 'nope', path: 'x.json' }), /404/);
+    gh.o.readonly = true;
+    await assert.rejects(A.engine.test({ token: 'tok', owner: 'me', repo: 'data', path: 'x.json' }), /403/);
+    gh.o.readonly = false;
+    await assert.rejects(A.engine.test({ token: 'tok', owner: 'me', repo: 'data', path: 'x.json', branch: 'nix' }), /Branch/);
+    const ok = await A.engine.test({ token: 'tok', owner: 'me', repo: 'data', path: 'x.json', branch: 'main' });
+    assert.strictEqual(ok.exists, false);
+  });
+
+  await test('Dateipfad mit ".." wird abgelehnt, kein Request außerhalb von /contents/', async () => {
+    const gh = fakeGitHub();
+    const A = device('A', gh, { workouts: [wo('w1', 10)] });
+    A.state.sync.path = '../../user';
+    assert.strictEqual(await A.engine.run(), false);
+    assert.ok(/Dateipfad/.test(A.engine.status().message), A.engine.status().message);
+    assert.ok(gh.log.every((l) => l.includes('/contents/') || /\/repos\/me\/data$/.test(l)) || gh.log.length === 0, gh.log.join('\n'));
+  });
+
+  await test('Profil-Edit auf dem Gerät mit zurückhängender Uhr setzt sich durch', () => {
+    const remote = doc({ profile: { name: 'Laptop', unit: 'lb', updatedAt: at(10) } });
+    const local = S.migrateState({ profile: { name: 'Laptop', unit: 'lb', updatedAt: at(10) } }, T0);
+    S.touch(local.profile, new Date(at(5)).getTime()); // lokale Uhr hängt 5 Minuten hinterher
+    local.profile.unit = 'kg';
+    const r = S.mergeDocs(S.buildDoc(local, T0), remote);
+    assert.strictEqual(r.merged.profile.unit, 'kg');
+    assert.ok(r.changedRemote && !r.changedLocal);
   });
 
   console.log('\n' + passed + ' Tests bestanden' + (process.exitCode ? ', es gab Fehler' : ''));

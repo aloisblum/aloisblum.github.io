@@ -14,7 +14,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':
 const uid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
 const num = (v) => { if (v === '' || v == null) return null; const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
 const fmtNum = (n, digits) => { if (n == null || !Number.isFinite(n)) return '–'; const d = digits == null ? 2 : digits; return (Math.round(n * 10 ** d) / 10 ** d).toLocaleString('de-DE', { maximumFractionDigits: d }); };
-const fmtW = (n) => `${fmtNum(n)} ${state.profile.unit}`;
+const fmtW = (n) => `${fmtNum(n)} ${esc(state.profile.unit)}`;
 const inputVal = (n) => (n == null || n === '' ? '' : String(n).replace('.', ','));
 const fmtDate = (iso, opts) => new Date(iso).toLocaleDateString('de-DE', opts || { weekday: 'short', day: '2-digit', month: 'short' });
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
@@ -59,6 +59,7 @@ const STARTER_EXERCISES = [
   ['Trizepsdrücken am Kabel', 'Arme', 'cable', 10, 15, 3, 60],
   ['Crunch am Kabel', 'Core', 'cable', 12, 15, 3, 60],
 ];
+const STARTER_STAMP = '2024-01-01T00:00:00.000Z';
 const STARTER_ROUTINES = [
   ['Push', ['Bankdrücken', 'Schulterdrücken', 'Kurzhantel-Schrägbankdrücken', 'Seitheben', 'Trizepsdrücken am Kabel']],
   ['Pull', ['Kreuzheben', 'Klimmzüge', 'Langhantelrudern', 'Latzug', 'Bizepscurls']],
@@ -91,6 +92,7 @@ const idb = {
       req.onupgradeneeded = () => req.result.createObjectStore('kv');
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new Error('IndexedDB blockiert'));
     });
   },
   async get(key) {
@@ -116,15 +118,19 @@ const idb = {
   },
 };
 
+const withTimeout = (promise, ms) => Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(undefined), ms))]);
 async function loadState() {
   let data = null, source = 'local';
   try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) data = JSON.parse(raw); }
   catch (err) { console.warn('localStorage nicht lesbar', err); }
-  if (!data) {
-    const mirror = await idb.get('state');
+  // Spiegel bevorzugen, wenn localStorage zuletzt nicht geschrieben werden konnte (Speicher voll)
+  const preferMirror = data ? await withTimeout(idb.get('preferMirror'), 1500) : false;
+  if (!data || preferMirror) {
+    const mirror = await withTimeout(idb.get('state'), 1500);
     if (mirror && typeof mirror === 'object') { data = mirror; source = 'mirror'; }
   }
   const st = S.migrateState(sanitize(data || {}));
+  if (!data) st.profile.updatedAt = new Date(0).toISOString(); // unberührtes Standardprofil darf ein synchronisiertes nie überschreiben
   if (source === 'mirror') {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); } catch { /* wird beim nächsten Speichern erneut versucht */ }
     setTimeout(() => toast('Daten aus der Sicherungskopie wiederhergestellt', 'info'), 300);
@@ -147,49 +153,65 @@ let state = defaultState();
 let storagePersisted = null; // null = unbekannt, true/false = Antwort des Browsers
 
 // Lokal speichern (localStorage + IndexedDB-Spiegel), ohne Sync anzustoßen
+let localWriteFailed = false;
 function persistLocal() {
   let json;
   try { json = JSON.stringify(state); }
   catch (err) { console.error(err); return; }
+  let ok = true;
   try { localStorage.setItem(STORAGE_KEY, json); }
-  catch { toast('Speichern fehlgeschlagen – Speicher voll?', 'danger'); }
+  catch { ok = false; toast('Speichern im Browser fehlgeschlagen – Sicherungskopie wird genutzt', 'warning'); }
   idb.set('state', JSON.parse(json));
+  if (ok === localWriteFailed) { localWriteFailed = !ok; idb.set('preferMirror', !ok); } // nur bei Statuswechsel schreiben
 }
 // Für gerätelokale Änderungen (laufendes Training, Design, Sync-Einstellungen)
 function save() { persistLocal(); }
 // Für Änderungen an synchronisierten Daten (Übungen, Pläne, Trainings, Profil)
 function saveSynced() { persistLocal(); engine.schedule(); }
-function touchProfile() { state.profile.updatedAt = new Date().toISOString(); }
+function touchProfile() { S.touch(state.profile); }
 
 /* ---------- Cloud-Sync ---------- */
 const engine = S.createEngine({ getState: () => state, persist: persistLocal, onChange: onSyncChange });
+function isTyping() {
+  const ae = document.activeElement;
+  return !!(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && $('#view') && $('#view').contains(ae));
+}
 function onSyncChange(info) {
   renderSyncStatus();
   if (info.dataChanged) {
     toast('Daten von einem anderen Gerät übernommen', 'success');
-    if (ui.tab === 'train' && state.active) ui.pendingRender = true; // laufendes Training nicht unterbrechen
+    if ((ui.tab === 'train' && state.active) || isTyping() || modal) ui.pendingRender = true; // nicht mitten in der Eingabe neu zeichnen
     else { ui.keepScroll = true; render(); }
   }
+}
+function flushPendingRender() {
+  if (!ui.pendingRender || (ui.tab === 'train' && state.active) || isTyping() || modal) return;
+  ui.pendingRender = false; ui.keepScroll = true; render();
 }
 function syncStatusView() {
   const c = state.sync || {};
   if (!c.enabled) return null;
   const st = engine.status();
-  const when = c.lastSyncAt ? relativeTime(c.lastSyncAt) : 'noch nie';
+  const when = c.lastSyncAt ? `letzter Abgleich ${relativeTime(c.lastSyncAt)}` : 'noch kein Abgleich';
   if (st.state === 'syncing') return { tone: 'info', icon: 'refresh', short: 'Läuft …', text: 'Synchronisiere …', detail: '' };
-  if (st.state === 'offline') return { tone: 'warning', icon: 'cloud-off', short: 'Offline', text: `Offline · letzter Abgleich ${when}`, detail: st.message };
+  if (st.state === 'offline') return { tone: 'warning', icon: 'cloud-off', short: 'Offline', text: `Offline · ${when}`, detail: st.message };
   if (st.state === 'error' || c.lastError) return { tone: 'danger', icon: 'cloud-off', short: 'Fehler', text: 'Abgleich fehlgeschlagen', detail: st.message || c.lastError };
-  if (c.dirty) return { tone: 'info', icon: 'cloud', short: 'Ausstehend', text: `Änderungen werden gleich hochgeladen · letzter Abgleich ${when}`, detail: '' };
-  return { tone: 'success', icon: 'cloud', short: 'Synchronisiert', text: `Synchronisiert · ${when}`, detail: '' };
+  if (c.dirty) return { tone: 'info', icon: 'cloud', short: 'Ausstehend', text: `Änderungen werden gleich hochgeladen · ${when}`, detail: '' };
+  return { tone: 'success', icon: 'cloud', short: 'Synchronisiert', text: c.lastSyncAt ? `Synchronisiert · ${when}` : 'Verbunden · noch kein Abgleich', detail: '' };
 }
 function renderSyncStatus() {
   const v = syncStatusView();
   $$('[data-sync-status]').forEach((el) => {
     el.className = `badge tone-${v ? v.tone : 'info'}`;
-    el.innerHTML = v ? `${icon(v.icon)} ${esc(el.dataset.syncStatus === 'short' ? v.short : v.text)}` : '';
+    el.innerHTML = v ? `${icon(v.icon)} ${esc(v.short)}` : '';
     el.hidden = !v;
   });
-  $$('[data-sync-detail]').forEach((el) => { el.textContent = v && v.detail ? v.detail : ''; el.hidden = !(v && v.detail); });
+  $$('[data-sync-text]').forEach((el) => { el.textContent = v ? v.text : ''; });
+  $$('[data-sync-detail]').forEach((el) => {
+    el.textContent = v && v.detail ? v.detail : '';
+    el.hidden = !(v && v.detail);
+    el.style.color = v ? `var(--${v.tone})` : '';
+  });
 }
 function relativeTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -200,10 +222,17 @@ function relativeTime(iso) {
   if (h < 24) return `vor ${h} Std.`;
   return `am ${fmtDate(iso, { day: '2-digit', month: '2-digit' })} um ${fmtTime(iso)}`;
 }
-async function requestPersistence() {
+// Status lesen; aktiv anfragen nur in der installierten App oder nach einer Nutzeraktion (Firefox zeigt sonst bei jedem Laden einen Dialog)
+async function requestPersistence(fromGesture) {
   try {
-    if (navigator.storage && navigator.storage.persist) {
-      storagePersisted = (await navigator.storage.persisted()) || (await navigator.storage.persist());
+    if (!navigator.storage || !navigator.storage.persisted) return;
+    storagePersisted = await navigator.storage.persisted();
+    if (storagePersisted) return;
+    let asked = false;
+    try { asked = localStorage.getItem('gymtracker.persistAsked') === '1'; } catch { /* egal */ }
+    if (isStandalone() || (fromGesture && !asked)) {
+      storagePersisted = await navigator.storage.persist();
+      if (fromGesture) { try { localStorage.setItem('gymtracker.persistAsked', '1'); } catch { /* egal */ } }
     }
   } catch { storagePersisted = null; }
 }
@@ -446,11 +475,13 @@ function createExercise(data) {
 }
 function loadStarter() {
   const byName = new Map(state.exercises.map((e) => [e.name.toLowerCase(), e]));
+  const byId = new Set(state.exercises.map((e) => e.id));
   let added = 0;
   STARTER_EXERCISES.forEach(([name, muscle, equipment, repMin, repMax, sets, restSeconds]) => {
-    if (byName.has(name.toLowerCase())) return;
+    if (byName.has(name.toLowerCase()) || byId.has(`starter-${slug(name)}`)) return;
     const ex = createExercise({ name, muscle, equipment, repMin, repMax, sets, restSeconds, increment: defaultIncrement(equipment, state.profile.unit) });
     ex.id = `starter-${slug(name)}`; // feste ID: auf mehreren Geräten geladen → beim Abgleich dieselbe Übung
+    ex.createdAt = STARTER_STAMP; ex.updatedAt = STARTER_STAMP; // alter Zeitstempel: Nutzeränderungen gewinnen immer
     if (equipment === 'bodyweight') ex.increment = 0;
     state.exercises.push(ex); byName.set(name.toLowerCase(), ex); added++;
   });
@@ -458,7 +489,7 @@ function loadStarter() {
   STARTER_ROUTINES.forEach(([name, names]) => {
     if (routineNames.has(name.toLowerCase())) return;
     const ids = names.map((n) => byName.get(n.toLowerCase())).filter(Boolean).map((e) => e.id);
-    if (ids.length) state.routines.push({ id: `starter-plan-${slug(name)}`, name, exerciseIds: ids, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    if (ids.length) state.routines.push({ id: `starter-plan-${slug(name)}`, name, exerciseIds: ids, createdAt: STARTER_STAMP, updatedAt: STARTER_STAMP });
   });
   saveSynced();
   toast(added ? `${plural(added, 'Übung', 'Übungen')} und 3 Pläne hinzugefügt` : 'Starter-Set ist bereits geladen', 'success');
@@ -600,6 +631,7 @@ function finishWorkout() {
   stopRest(true);
   clearInterval(clockTimer);
   saveSynced();
+  requestPersistence(true);
   render();
   showSummary(workout, prs);
 }
@@ -670,7 +702,7 @@ function pickerList() {
     const sel = ui.picker.selected.includes(e.id);
     const last = sessionsFor(e.id)[0];
     const sum = last ? P.summarize(last) : null;
-    return `<button class="item ${sel ? 'selected' : ''}" data-action="picker-toggle" data-id="${e.id}">
+    return `<button class="item ${sel ? 'selected' : ''}" data-action="picker-toggle" data-id="${esc(e.id)}">
       <div class="checkbox">${icon('check')}</div>
       <div class="grow"><div class="item-title">${esc(e.name)}${inWorkout.has(e.id) ? ' <span class="badge">im Training</span>' : ''}</div>
       <div class="item-sub">${esc(e.muscle)} · ${esc(eqLabel(e.equipment))}${sum ? ` · zuletzt ${fmtW(sum.workWeight)} × ${sum.workSets.map((s) => s.reps).join('/')}` : ''}</div></div>
@@ -687,21 +719,21 @@ function openExerciseForm(exercise, afterSave) {
   openModal({
     title: ex ? 'Übung bearbeiten' : 'Neue Übung',
     body: () => `
-      <form data-form="exercise" id="exercise-form" data-id="${ex ? ex.id : ''}" data-after="${afterSave ? '1' : ''}">
+      <form data-form="exercise" id="exercise-form" data-id="${esc(ex ? ex.id : '')}" data-after="${afterSave ? '1' : ''}">
         <div class="field"><label for="ex-name">Name</label><input class="input" id="ex-name" name="name" required maxlength="60" placeholder="z. B. Bankdrücken" value="${esc(ex ? ex.name : '')}" autocomplete="off"></div>
         <div class="row">
           <div class="field"><label for="ex-muscle">Muskelgruppe</label><select class="input" id="ex-muscle" name="muscle">${muscleOptions}</select></div>
           <div class="field"><label for="ex-eq">Gerät</label><select class="input" id="ex-eq" name="equipment" data-field="ex-equipment">${eqOptions}</select></div>
         </div>
         <div class="row-3">
-          <div class="field"><label for="ex-sets">Sätze</label><input class="input" id="ex-sets" name="sets" type="number" inputmode="numeric" min="1" max="10" value="${ex ? ex.sets : 3}"></div>
-          <div class="field"><label for="ex-repmin">Wdh. min</label><input class="input" id="ex-repmin" name="repMin" type="number" inputmode="numeric" min="1" max="50" value="${ex ? ex.repMin : 8}"></div>
-          <div class="field"><label for="ex-repmax">Wdh. max</label><input class="input" id="ex-repmax" name="repMax" type="number" inputmode="numeric" min="1" max="50" value="${ex ? ex.repMax : 12}"></div>
+          <div class="field"><label for="ex-sets">Sätze</label><input class="input" id="ex-sets" name="sets" type="number" inputmode="numeric" min="1" max="10" value="${esc(ex ? ex.sets : 3)}"></div>
+          <div class="field"><label for="ex-repmin">Wdh. min</label><input class="input" id="ex-repmin" name="repMin" type="number" inputmode="numeric" min="1" max="50" value="${esc(ex ? ex.repMin : 8)}"></div>
+          <div class="field"><label for="ex-repmax">Wdh. max</label><input class="input" id="ex-repmax" name="repMax" type="number" inputmode="numeric" min="1" max="50" value="${esc(ex ? ex.repMax : 12)}"></div>
         </div>
         <div class="row">
           <div class="field"><label for="ex-inc">Gewichtsstufe (${esc(unit)})</label><input class="input" id="ex-inc" name="increment" inputmode="decimal" value="${inputVal(ex ? ex.increment : defaultIncrement('barbell', unit))}" data-touched="${ex ? '1' : ''}" data-field="ex-increment">
             <div class="hint">Um so viel wird gesteigert.</div></div>
-          <div class="field"><label for="ex-rest">Pause (Sek.)</label><input class="input" id="ex-rest" name="restSeconds" type="number" inputmode="numeric" min="0" max="900" placeholder="Standard: ${state.profile.restSeconds}" value="${ex && ex.restSeconds != null ? ex.restSeconds : ''}"></div>
+          <div class="field"><label for="ex-rest">Pause (Sek.)</label><input class="input" id="ex-rest" name="restSeconds" type="number" inputmode="numeric" min="0" max="900" placeholder="Standard: ${esc(state.profile.restSeconds)}" value="${esc(ex && ex.restSeconds != null ? ex.restSeconds : '')}"></div>
         </div>
         <div class="field"><label for="ex-notes">Notizen (optional)</label><textarea class="input" id="ex-notes" name="notes" maxlength="300" placeholder="Griffbreite, Sitzposition, Hinweise …">${esc(ex ? ex.notes : '')}</textarea></div>
         <p class="hint small muted">Wiederholungsbereich: Sobald du in allen Sätzen das Maximum schaffst, empfiehlt der Tracker die nächste Gewichtsstufe.</p>
@@ -767,12 +799,12 @@ function openRoutineForm(routine) {
         <div class="field"><label>Übungen in Reihenfolge</label>
           <div class="stack" id="routine-list">${draft.exerciseIds.length ? draft.exerciseIds.map((id, i) => `
             <div class="sortable"><span class="muted small tnum">${i + 1}.</span><span class="grow">${esc(exById(id).name)}</span>
-              <button type="button" class="btn btn-icon" data-action="routine-move" data-id="${id}" data-dir="-1" aria-label="Nach oben" ${i === 0 ? 'disabled' : ''}>${icon('arrow-up')}</button>
-              <button type="button" class="btn btn-icon" data-action="routine-move" data-id="${id}" data-dir="1" aria-label="Nach unten" ${i === draft.exerciseIds.length - 1 ? 'disabled' : ''}>${icon('arrow-down')}</button>
-              <button type="button" class="btn btn-icon" data-action="routine-remove" data-id="${id}" aria-label="Entfernen">${icon('x')}</button></div>`).join('')
+              <button type="button" class="btn btn-icon" data-action="routine-move" data-id="${esc(id)}" data-dir="-1" aria-label="Nach oben" ${i === 0 ? 'disabled' : ''}>${icon('arrow-up')}</button>
+              <button type="button" class="btn btn-icon" data-action="routine-move" data-id="${esc(id)}" data-dir="1" aria-label="Nach unten" ${i === draft.exerciseIds.length - 1 ? 'disabled' : ''}>${icon('arrow-down')}</button>
+              <button type="button" class="btn btn-icon" data-action="routine-remove" data-id="${esc(id)}" aria-label="Entfernen">${icon('x')}</button></div>`).join('')
             : '<div class="empty small">Noch keine Übungen im Plan.</div>'}</div></div>
         <div class="field"><label for="rt-add">Übung hinzufügen</label>
-          <select class="input" id="rt-add" data-field="routine-add"><option value="">Übung wählen …</option>${available.map((e) => `<option value="${e.id}">${esc(e.name)} (${esc(e.muscle)})</option>`).join('')}</select>
+          <select class="input" id="rt-add" data-field="routine-add"><option value="">Übung wählen …</option>${available.map((e) => `<option value="${esc(e.id)}">${esc(e.name)} (${esc(e.muscle)})</option>`).join('')}</select>
           ${state.exercises.length ? '' : '<div class="hint">Lege zuerst Übungen an.</div>'}</div>
       </form>`;
     },
@@ -976,7 +1008,7 @@ function viewTopbar() {
   if (t === 'exercises') {
     if (ui.exerciseId && exById(ui.exerciseId)) {
       const ex = exById(ui.exerciseId);
-      return `${back(ex.name)}<button class="btn btn-icon" data-action="edit-exercise" data-id="${ex.id}" aria-label="Bearbeiten">${icon('edit')}</button>`;
+      return `${back(ex.name)}<button class="btn btn-icon" data-action="edit-exercise" data-id="${esc(ex.id)}" aria-label="Bearbeiten">${icon('edit')}</button>`;
     }
     return `<div class="grow"><h1>Übungen</h1><div class="sub">${plural(state.exercises.length, 'Übung', 'Übungen')} angelegt</div></div>
       <button class="btn btn-sm btn-primary" data-action="new-exercise">${icon('plus')} Neu</button>`;
@@ -1007,7 +1039,7 @@ function viewTrainHome() {
     parts.push(`<div class="section-title"><span>Trainingspläne</span><button class="link" data-action="new-routine">${icon('plus')} Plan</button></div>
       <div class="list">${state.routines.map((r) => {
         const lastRun = state.workouts.find((w) => w.routineId === r.id);
-        return `<button class="item" data-action="start-routine" data-id="${r.id}">
+        return `<button class="item" data-action="start-routine" data-id="${esc(r.id)}">
           <div class="avatar">${esc(r.name.slice(0, 2).toUpperCase())}</div>
           <div class="grow"><div class="item-title">${esc(r.name)}</div><div class="item-sub">${plural(r.exerciseIds.filter((id) => exById(id)).length, 'Übung', 'Übungen')}${lastRun ? ` · zuletzt ${esc(fmtDate(lastRun.finishedAt))}` : ''}</div></div>
           ${icon('play', 'muted')}
@@ -1032,7 +1064,7 @@ function viewTrainHome() {
       <div class="item-title">${esc(last.name)}</div>
       <div class="item-sub">${plural(st.exercises, 'Übung', 'Übungen')} · ${plural(st.sets, 'Satz', 'Sätze')} · ${fmtNum(st.volume, 0)} ${esc(state.profile.unit)} · ${fmtMinutes(st.duration)}</div>
       <div class="sets-summary mt-sm">${last.entries.map((en) => `<span class="pill">${esc(entryName(en))}</span>`).join('')}</div>
-      <div class="btn-row mt"><button class="btn btn-ghost" data-action="repeat-workout" data-id="${last.id}">${icon('history')} Wiederholen</button><button class="btn btn-ghost" data-action="tab" data-tab="history">Verlauf</button></div>
+      <div class="btn-row mt"><button class="btn btn-ghost" data-action="repeat-workout" data-id="${esc(last.id)}">${icon('history')} Wiederholen</button><button class="btn btn-ghost" data-action="tab" data-tab="history">Verlauf</button></div>
     </div>`);
   }
   return parts.join('');
@@ -1042,7 +1074,8 @@ function progressSafetyCard() {
   const c = state.sync || {};
   if (c.enabled) {
     const v = syncStatusView();
-    return `<div class="card between wrap"><div class="flex"><span class="badge tone-${v.tone}" data-sync-status="full">${icon(v.icon)} ${esc(v.text)}</span></div>
+    return `<div class="card between wrap"><div class="grow" style="min-width:0"><div class="flex"><span class="badge tone-${v.tone}" data-sync-status>${icon(v.icon)} ${esc(v.short)}</span><span class="small muted">Cloud-Sync</span></div>
+      <div class="item-sub" data-sync-text>${esc(v.text)}</div><div class="item-sub" data-sync-detail ${v.detail ? '' : 'hidden'} style="color:var(--${v.tone})">${esc(v.detail || '')}</div></div>
       <button class="btn btn-sm btn-ghost" data-action="sync-now">${icon('refresh')} Abgleichen</button></div>`;
   }
   if (state.workouts.length < 2) return '';
@@ -1071,28 +1104,28 @@ function viewActiveWorkout() {
       const isWarm = s.warmup;
       const i = isWarm ? null : workIdx++;
       const prev = !isWarm && prevSets[i] ? `${fmtNum(prevSets[i].weight)}×${prevSets[i].reps}` : (isWarm ? 'Aufwärmen' : '–');
-      return `<div class="set-row ${s.done ? 'done' : ''}" data-entry="${entry.id}" data-set="${s.id}">
+      return `<div class="set-row ${s.done ? 'done' : ''}" data-entry="${esc(entry.id)}" data-set="${esc(s.id)}">
         <div class="set-num ${isWarm ? 'warmup' : ''}">${isWarm ? 'W' : i + 1}</div>
         <div class="set-prev">${esc(prev)}</div>
-        <input class="set-input" inputmode="decimal" enterkeyhint="next" aria-label="Gewicht" placeholder="${ex && ex.equipment === 'bodyweight' ? '0' : '–'}" value="${esc(inputVal(s.weight))}" data-field="weight" data-entry="${entry.id}" data-set="${s.id}">
-        <input class="set-input" inputmode="numeric" enterkeyhint="done" aria-label="Wiederholungen" placeholder="${rec && !isWarm && rec.repTargets[i] != null ? rec.repTargets[i] : '–'}" value="${esc(inputVal(s.reps))}" data-field="reps" data-entry="${entry.id}" data-set="${s.id}">
-        ${withRpe ? `<input class="set-input" inputmode="decimal" aria-label="RPE" placeholder="RPE" value="${esc(inputVal(s.rpe))}" data-field="rpe" data-entry="${entry.id}" data-set="${s.id}">` : ''}
-        <button class="set-done ${s.done ? 'on' : ''}" data-action="toggle-set" data-entry="${entry.id}" data-set="${s.id}" aria-label="${s.done ? 'Satz zurücksetzen' : 'Satz abschließen'}" aria-pressed="${s.done}">${icon('check')}</button>
+        <input class="set-input" inputmode="decimal" enterkeyhint="next" aria-label="Gewicht" placeholder="${ex && ex.equipment === 'bodyweight' ? '0' : '–'}" value="${esc(inputVal(s.weight))}" data-field="weight" data-entry="${esc(entry.id)}" data-set="${esc(s.id)}">
+        <input class="set-input" inputmode="numeric" enterkeyhint="done" aria-label="Wiederholungen" placeholder="${rec && !isWarm && rec.repTargets[i] != null ? rec.repTargets[i] : '–'}" value="${esc(inputVal(s.reps))}" data-field="reps" data-entry="${esc(entry.id)}" data-set="${esc(s.id)}">
+        ${withRpe ? `<input class="set-input" inputmode="decimal" aria-label="RPE" placeholder="RPE" value="${esc(inputVal(s.rpe))}" data-field="rpe" data-entry="${esc(entry.id)}" data-set="${esc(s.id)}">` : ''}
+        <button class="set-done ${s.done ? 'on' : ''}" data-action="toggle-set" data-entry="${esc(entry.id)}" data-set="${esc(s.id)}" aria-label="${s.done ? 'Satz zurücksetzen' : 'Satz abschließen'}" aria-pressed="${s.done}">${icon('check')}</button>
       </div>`;
     }).join('');
     const menuOpen = ui.menuEntry === entry.id;
-    return `<div class="card exercise-card" id="entry-${entry.id}">
+    return `<div class="card exercise-card" id="entry-${esc(entry.id)}">
       <div class="exercise-head">
-        <div class="grow"><h3>${esc(entryName(entry))}</h3><div class="meta">${ex ? `${esc(ex.muscle)} · ${esc(eqLabel(ex.equipment))} · Ziel ${ex.sets} × ${ex.repMin}–${ex.repMax}` : 'Übung wurde gelöscht'}</div></div>
+        <div class="grow"><h3>${esc(entryName(entry))}</h3><div class="meta">${ex ? `${esc(ex.muscle)} · ${esc(eqLabel(ex.equipment))} · Ziel ${esc(ex.sets)} × ${esc(ex.repMin)}–${esc(ex.repMax)}` : 'Übung wurde gelöscht'}</div></div>
         <div class="menu-wrap">
-          <button class="btn btn-icon" data-action="entry-menu" data-id="${entry.id}" aria-label="Optionen" aria-expanded="${menuOpen}">${icon('more')}</button>
+          <button class="btn btn-icon" data-action="entry-menu" data-id="${esc(entry.id)}" aria-label="Optionen" aria-expanded="${menuOpen}">${icon('more')}</button>
           ${menuOpen ? `<div class="menu">
-            <button data-action="add-warmup" data-id="${entry.id}">${icon('flame')} Aufwärmsätze vorschlagen</button>
-            <button data-action="entry-note" data-id="${entry.id}">${icon('edit')} Notiz ${entry.note ? 'bearbeiten' : 'hinzufügen'}</button>
-            ${ex ? `<button data-action="open-exercise" data-id="${ex.id}">${icon('history')} Verlauf der Übung</button>` : ''}
-            <button data-action="move-entry" data-id="${entry.id}" data-dir="-1" ${idx === 0 ? 'disabled' : ''}>${icon('arrow-up')} Nach oben</button>
-            <button data-action="move-entry" data-id="${entry.id}" data-dir="1" ${idx === a.entries.length - 1 ? 'disabled' : ''}>${icon('arrow-down')} Nach unten</button>
-            <button class="danger" data-action="remove-entry" data-id="${entry.id}">${icon('trash')} Übung entfernen</button>
+            <button data-action="add-warmup" data-id="${esc(entry.id)}">${icon('flame')} Aufwärmsätze vorschlagen</button>
+            <button data-action="entry-note" data-id="${esc(entry.id)}">${icon('edit')} Notiz ${entry.note ? 'bearbeiten' : 'hinzufügen'}</button>
+            ${ex ? `<button data-action="open-exercise" data-id="${esc(ex.id)}">${icon('history')} Verlauf der Übung</button>` : ''}
+            <button data-action="move-entry" data-id="${esc(entry.id)}" data-dir="-1" ${idx === 0 ? 'disabled' : ''}>${icon('arrow-up')} Nach oben</button>
+            <button data-action="move-entry" data-id="${esc(entry.id)}" data-dir="1" ${idx === a.entries.length - 1 ? 'disabled' : ''}>${icon('arrow-down')} Nach unten</button>
+            <button class="danger" data-action="remove-entry" data-id="${esc(entry.id)}">${icon('trash')} Übung entfernen</button>
           </div>` : ''}
         </div>
       </div>
@@ -1103,8 +1136,8 @@ function viewActiveWorkout() {
         ${rows}
       </div>
       <div class="set-actions">
-        <button class="btn btn-sm btn-ghost" data-action="add-set" data-id="${entry.id}">${icon('plus')} Satz</button>
-        ${entry.sets.length ? `<button class="btn btn-sm btn-ghost" data-action="remove-last-set" data-id="${entry.id}">${icon('x')} Letzten Satz entfernen</button>` : ''}
+        <button class="btn btn-sm btn-ghost" data-action="add-set" data-id="${esc(entry.id)}">${icon('plus')} Satz</button>
+        ${entry.sets.length ? `<button class="btn btn-sm btn-ghost" data-action="remove-last-set" data-id="${esc(entry.id)}">${icon('x')} Letzten Satz entfernen</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -1142,7 +1175,7 @@ function workoutCard(w) {
   const st = workoutStats(w);
   const open = ui.openWorkouts.has(w.id);
   return `<div class="card workout-card">
-    <button class="item" style="padding:0;border:0;background:none" data-action="history-toggle" data-id="${w.id}" aria-expanded="${open}">
+    <button class="item" style="padding:0;border:0;background:none" data-action="history-toggle" data-id="${esc(w.id)}" aria-expanded="${open}">
       <div class="grow"><div class="item-title">${esc(w.name)}</div>
         <div class="item-sub">${esc(fmtDate(w.finishedAt))} · ${esc(fmtTime(w.startedAt))} · ${fmtMinutes(st.duration)}</div>
         <div class="item-sub">${plural(st.exercises, 'Übung', 'Übungen')} · ${plural(st.sets, 'Satz', 'Sätze')} · ${fmtNum(st.volume, 0)} ${esc(state.profile.unit)}</div></div>
@@ -1150,10 +1183,10 @@ function workoutCard(w) {
     </button>
     ${open ? `<div class="mt">${w.entries.map((en) => `<div class="workout-entry">
         <div class="name">${esc(entryName(en))}</div>
-        <div class="sets-summary">${en.sets.map((s) => `<span class="pill ${s.warmup ? 'warm' : ''}">${fmtNum(s.weight)} × ${s.reps}${s.rpe ? ` @${fmtNum(s.rpe, 1)}` : ''}</span>`).join('')}</div>
+        <div class="sets-summary">${en.sets.map((s) => `<span class="pill ${s.warmup ? 'warm' : ''}">${fmtNum(s.weight)} × ${esc(s.reps)}${s.rpe ? ` @${fmtNum(s.rpe, 1)}` : ''}</span>`).join('')}</div>
         ${en.note ? `<div class="small muted mt-sm">📝 ${esc(en.note)}</div>` : ''}
       </div>`).join('')}
-      <div class="btn-row mt"><button class="btn btn-sm btn-ghost" data-action="repeat-workout" data-id="${w.id}">${icon('history')} Wiederholen</button><button class="btn btn-sm btn-danger" data-action="delete-workout" data-id="${w.id}">${icon('trash')} Löschen</button></div>
+      <div class="btn-row mt"><button class="btn btn-sm btn-ghost" data-action="repeat-workout" data-id="${esc(w.id)}">${icon('history')} Wiederholen</button><button class="btn btn-sm btn-danger" data-action="delete-workout" data-id="${esc(w.id)}">${icon('trash')} Löschen</button></div>
     </div>` : ''}
   </div>`;
 }
@@ -1190,7 +1223,7 @@ function viewExercises() {
       const sessions = sessionsFor(e.id);
       const rec = recommendationFor(e, sessions);
       const sum = sessions[0] ? P.summarize(sessions[0]) : null;
-      return `<button class="item" data-action="open-exercise" data-id="${e.id}">
+      return `<button class="item" data-action="open-exercise" data-id="${esc(e.id)}">
         <div class="avatar">${esc(e.name.slice(0, 2).toUpperCase())}</div>
         <div class="grow"><div class="item-title">${esc(e.name)}</div>
           <div class="item-sub">${esc(e.muscle)} · ${esc(eqLabel(e.equipment))} · <span class="nowrap">${e.sets} × ${e.repMin}–${e.repMax}</span>${sum ? ` · zuletzt ${fmtW(sum.workWeight)} × ${sum.workSets.map((s) => s.reps).join('/')}` : ''}</div></div>
@@ -1223,20 +1256,20 @@ function viewExerciseDetail(ex) {
     </div>
     <div class="card">
       <div class="card-title">Verlauf</div>
-      <div class="seg">${Object.keys(metrics).map((k) => `<button class="${metric === k ? 'active' : ''}" data-action="chart-metric" data-id="${ex.id}" data-metric="${k}">${metrics[k]}</button>`).join('')}</div>
+      <div class="seg">${Object.keys(metrics).map((k) => `<button class="${metric === k ? 'active' : ''}" data-action="chart-metric" data-id="${esc(ex.id)}" data-metric="${k}">${metrics[k]}</button>`).join('')}</div>
       <div class="small muted mt-sm">${esc(metricNames[metric])}</div>
       ${lineChart(`chart-${ex.id.replace(/[^a-z0-9]/gi, '')}`, points, metricNames[metric])}
     </div>
     <div class="card">
       <div class="card-title">Einstellungen</div>
-      <div class="chips"><span class="chip static">${esc(ex.muscle)}</span><span class="chip static">${esc(eqLabel(ex.equipment))}</span><span class="chip static">${ex.sets} Sätze</span><span class="chip static">${ex.repMin}–${ex.repMax} Wdh.</span><span class="chip static">+${fmtNum(ex.increment)} ${esc(state.profile.unit)}</span><span class="chip static">Pause ${ex.restSeconds != null ? ex.restSeconds : state.profile.restSeconds} s</span></div>
+      <div class="chips"><span class="chip static">${esc(ex.muscle)}</span><span class="chip static">${esc(eqLabel(ex.equipment))}</span><span class="chip static">${esc(ex.sets)} Sätze</span><span class="chip static">${esc(ex.repMin)}–${esc(ex.repMax)} Wdh.</span><span class="chip static">+${fmtNum(ex.increment)} ${esc(state.profile.unit)}</span><span class="chip static">Pause ${esc(ex.restSeconds != null ? ex.restSeconds : state.profile.restSeconds)} s</span></div>
       ${ex.notes ? `<p class="small muted mt">${esc(ex.notes)}</p>` : ''}
-      <div class="btn-row mt"><button class="btn btn-ghost" data-action="edit-exercise" data-id="${ex.id}">${icon('edit')} Bearbeiten</button><button class="btn btn-danger" data-action="delete-exercise" data-id="${ex.id}">${icon('trash')} Löschen</button></div>
+      <div class="btn-row mt"><button class="btn btn-ghost" data-action="edit-exercise" data-id="${esc(ex.id)}">${icon('edit')} Bearbeiten</button><button class="btn btn-danger" data-action="delete-exercise" data-id="${esc(ex.id)}">${icon('trash')} Löschen</button></div>
     </div>
     <div class="section-title"><span>Einheiten</span><span>${sessions.length}</span></div>
     ${summaries.length ? `<div class="list">${summaries.map(({ s, sum }) => `<div class="card workout-card">
       <div class="between"><div class="item-title">${esc(fmtDate(s.date, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }))}</div><div class="right small muted tnum">e1RM ${fmtNum(sum.e1rm, 1)} · Vol. ${fmtNum(sum.volume, 0)}</div></div>
-      <div class="sets-summary">${s.sets.map((set) => `<span class="pill ${set.warmup ? 'warm' : ''}">${fmtNum(set.weight)} × ${set.reps}${set.rpe ? ` @${fmtNum(set.rpe, 1)}` : ''}</span>`).join('')}</div>
+      <div class="sets-summary">${s.sets.map((set) => `<span class="pill ${set.warmup ? 'warm' : ''}">${fmtNum(set.weight)} × ${esc(set.reps)}${set.rpe ? ` @${fmtNum(set.rpe, 1)}` : ''}</span>`).join('')}</div>
     </div>`).join('')}</div>` : `<div class="card"><div class="empty small">Noch keine Einheiten – füge die Übung beim nächsten Training hinzu.</div></div>`}`;
 }
 
@@ -1250,7 +1283,7 @@ function viewProfile() {
     <div class="field"><label for="pf-name">Name</label><input class="input" id="pf-name" placeholder="Wie sollen wir dich nennen?" value="${esc(p.name)}" data-field="profile-name" maxlength="40" autocomplete="given-name"></div>
     <div class="row">
       <div class="field"><label for="pf-unit">Einheit</label><select class="input" id="pf-unit" data-field="profile-unit"><option value="kg" ${p.unit === 'kg' ? 'selected' : ''}>Kilogramm (kg)</option><option value="lb" ${p.unit === 'lb' ? 'selected' : ''}>Pfund (lb)</option></select></div>
-      <div class="field"><label for="pf-rest">Pause (Sek.)</label><input class="input" id="pf-rest" type="number" inputmode="numeric" min="0" max="900" value="${p.restSeconds}" data-field="profile-rest"></div>
+      <div class="field"><label for="pf-rest">Pause (Sek.)</label><input class="input" id="pf-rest" type="number" inputmode="numeric" min="0" max="900" value="${esc(p.restSeconds)}" data-field="profile-rest"></div>
     </div>
     <div class="switch"><div><div class="switch-text">RPE erfassen</div><div class="switch-sub">Anstrengung pro Satz (6–10) eintragen, verfeinert die Empfehlung</div></div><button class="toggle ${p.trackRpe ? 'on' : ''}" data-action="toggle-rpe" role="switch" aria-checked="${p.trackRpe}" aria-label="RPE erfassen"></button></div>
     <div class="switch"><div><div class="switch-text">Dunkles Design</div><div class="switch-sub">Schont die Augen im Studio</div></div><button class="toggle ${p.theme === 'dark' ? 'on' : ''}" data-action="toggle-theme" role="switch" aria-checked="${p.theme === 'dark'}" aria-label="Dunkles Design"></button></div>
@@ -1270,8 +1303,8 @@ function viewProfile() {
     <div class="card-title">Trainingspläne <span class="meta">${plural(state.routines.length, 'Plan', 'Pläne')}</span></div>
     ${state.routines.length ? `<div class="list mb">${state.routines.map((r) => `<div class="item">
       <div class="grow"><div class="item-title">${esc(r.name)}</div><div class="item-sub">${r.exerciseIds.filter((id) => exById(id)).map((id) => esc(exById(id).name)).join(' · ') || 'keine Übungen'}</div></div>
-      <button class="btn btn-icon" data-action="edit-routine" data-id="${r.id}" aria-label="Bearbeiten">${icon('edit')}</button>
-      <button class="btn btn-icon" data-action="delete-routine" data-id="${r.id}" aria-label="Löschen">${icon('trash')}</button>
+      <button class="btn btn-icon" data-action="edit-routine" data-id="${esc(r.id)}" aria-label="Bearbeiten">${icon('edit')}</button>
+      <button class="btn btn-icon" data-action="delete-routine" data-id="${esc(r.id)}" aria-label="Löschen">${icon('trash')}</button>
     </div>`).join('')}</div>` : `<p class="small muted mb">Ein Plan ist eine feste Übungsabfolge (z. B. Push, Pull, Beine), die du mit einem Tipp startest.</p>`}
     <button class="btn btn-ghost btn-block" data-action="new-routine">${icon('plus')} Plan anlegen</button>
   </div>
@@ -1319,10 +1352,11 @@ function syncCard() {
   }
   const v = syncStatusView();
   return `<div class="card">
-    <div class="card-title">Cloud-Sync <span class="badge tone-${v.tone}" data-sync-status="short">${icon(v.icon)} ${esc(v.short)}</span></div>
+    <div class="card-title">Cloud-Sync <span class="badge tone-${v.tone}" data-sync-status>${icon(v.icon)} ${esc(v.short)}</span></div>
     <div class="item-title">${esc(c.owner)}/${esc(c.repo)}</div>
-    <div class="item-sub">${esc(c.path || 'gym-tracker/data.json')}${c.branch ? ` · Branch ${esc(c.branch)}` : ''} · GitHub${c.lastSyncAt ? ` · letzter Abgleich ${esc(relativeTime(c.lastSyncAt))}` : ''}</div>
-    <p class="small mt-sm" style="color:var(--danger)" data-sync-detail ${v.detail ? '' : 'hidden'}>${esc(v.detail || '')}</p>
+    <div class="item-sub">${esc(c.path || 'gym-tracker/data.json')}${c.branch ? ` · Branch ${esc(c.branch)}` : ''} · GitHub</div>
+    <div class="item-sub" data-sync-text>${esc(v.text)}</div>
+    <p class="small mt-sm" style="color:var(--${v.tone})" data-sync-detail ${v.detail ? '' : 'hidden'}>${esc(v.detail || '')}</p>
     <div class="btn-row mt"><button class="btn btn-ghost" data-action="sync-now">${icon('refresh')} Jetzt abgleichen</button><button class="btn btn-ghost" data-action="sync-setup">${icon('edit')} Einstellungen</button></div>
     <button class="btn btn-danger btn-block mt-sm" data-action="sync-disconnect">Verbindung trennen</button>
   </div>`;
@@ -1332,10 +1366,14 @@ function installCard() {
   const os = platform();
   let body;
   if (isStandalone()) {
-    body = `<p class="small muted">${icon('check')} Läuft als installierte App. Die Daten dieser App sind vom Browser getrennt – mit Cloud-Sync sind sie überall gleich.</p>`;
+    body = os === 'ios'
+      ? `<p class="small muted">${icon('check')} Läuft als installierte App mit eigenem, dauerhaftem Speicher (getrennt von Safari). Mit Cloud-Sync sind die Daten auf allen Geräten gleich.</p>`
+      : os === 'android'
+        ? `<p class="small muted">${icon('check')} Läuft als installierte App – gleicher Datenstand wie im Chrome-Tab. Beim Löschen der Chrome-Browserdaten wären auch die Trainings weg; Cloud-Sync schützt davor.</p>`
+        : `<p class="small muted">${icon('check')} Läuft als installierte App. Mit Cloud-Sync sind deine Daten auf allen Geräten gleich.</p>`;
   } else if (os === 'ios') {
     body = `<ol class="rules">
-      <li>Tippe in Safari unten auf das <b>Teilen-Symbol</b> (Quadrat mit Pfeil nach oben). Chrome oder Firefox auf dem iPhone bieten dasselbe im Teilen-Menü.</li>
+      <li>Tippe in Safari auf das <b>Teilen-Symbol</b> (Quadrat mit Pfeil nach oben – auf dem iPhone unten in der Leiste, auf dem iPad oben rechts). Chrome oder Firefox auf iPhone und iPad bieten dasselbe im Teilen-Menü.</li>
       <li>Wähle <b>„Zum Home-Bildschirm“</b>. Lass auf iOS 26 den Schalter <b>„Als Web-App öffnen“</b> eingeschaltet.</li>
       <li>Bestätige mit <b>Hinzufügen</b> und benutze ab jetzt das neue Icon.</li>
     </ol>
@@ -1371,28 +1409,36 @@ function openSyncSetup() {
         <div class="field"><label for="sync-repo">Repository (Besitzer/Name)</label><input class="input" id="sync-repo" name="repo" placeholder="aloisblum/gym-tracker-daten" value="${esc(repoValue)}" autocomplete="off" autocapitalize="off" spellcheck="false" required></div>
         <div class="field"><label for="sync-token">Zugriffstoken</label>
           <div class="search" style="position:relative"><input class="input" id="sync-token" name="token" type="password" placeholder="github_pat_…" value="${esc(c.token || '')}" autocomplete="off" autocapitalize="off" spellcheck="false" required style="padding-left:12px;padding-right:48px">
-          <button type="button" class="btn btn-icon" data-action="toggle-token" style="position:absolute;right:4px;top:3px" aria-label="Token anzeigen">${icon('eye')}</button></div>
+          <button type="button" class="btn btn-icon" data-action="toggle-token" style="position:absolute;right:4px;top:3px" aria-label="Token anzeigen" aria-pressed="false">${icon('eye')}</button></div>
           <div class="hint">Wird nur in diesem Browser auf diesem Gerät gespeichert (lesbar für alle Seiten unter aloisblum.github.io). Nutze deshalb einen Token, der ausschließlich auf das Daten-Repository Zugriff hat – mehr kann damit niemand anstellen.</div></div>
         <div class="row">
           <div class="field"><label for="sync-path">Dateipfad</label><input class="input" id="sync-path" name="path" value="${esc(c.path || 'gym-tracker/data.json')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
           <div class="field"><label for="sync-branch">Branch (optional)</label><input class="input" id="sync-branch" name="branch" placeholder="Standard" value="${esc(c.branch || '')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
         </div>
-        <div id="sync-test-result" class="small mt-sm"></div>
+        <div id="sync-test-result" class="small mt-sm" role="status" aria-live="polite"></div>
       </form>`,
     foot: () => `<button class="btn btn-ghost" data-action="sync-test">Verbindung testen</button>
-                 <button class="btn btn-primary" type="submit" form="sync-form">Speichern &amp; abgleichen</button>`,
-    onMount: () => { const el = $(repoValue ? '#sync-token' : '#sync-repo'); if (el && !el.value) el.focus(); },
+                 <button class="btn btn-primary" type="submit" form="sync-form">Speichern</button>`,
+    onMount: () => { if (!repoValue) return; const el = $('#sync-token'); if (el && !el.value) el.focus(); },
   });
 }
 function readSyncForm() {
   const form = $('#sync-form'); if (!form) return null;
   const fd = new FormData(form);
-  const repo = String(fd.get('repo') || '').trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/\/+$/, '');
-  const parts = repo.split('/');
-  if (parts.length !== 2 || !parts[0] || !parts[1]) { toast('Repository bitte als Besitzer/Name angeben', 'warning'); return null; }
+  const fail = (msg, field) => {
+    const out = $('#sync-test-result'); if (out) { out.textContent = `Fehler: ${msg}`; out.style.color = 'var(--danger)'; }
+    toast(msg, 'warning'); const el = $(field); if (el) el.focus(); return null;
+  };
+  // Akzeptiert „besitzer/name“, komplette GitHub-URLs (auch mit /tree/main, /settings …) und git@github.com:…
+  const raw = String(fd.get('repo') || '').trim();
+  const repo = raw.replace(/^(?:https?:\/\/)?(?:www\.)?github\.com\//i, '').replace(/^git@github\.com:/i, '').replace(/\.git$/i, '').replace(/^\/+|\/+$/g, '');
+  const parts = repo.split('/').filter(Boolean).slice(0, 2);
+  if (parts.length !== 2 || !/^[\w.-]+$/.test(parts[0]) || !/^[\w.-]+$/.test(parts[1])) return fail('Repository bitte als Besitzer/Name angeben, z. B. aloisblum/gym-tracker-daten.', '#sync-repo');
+  const repoField = $('#sync-repo'); if (repoField) repoField.value = `${parts[0]}/${parts[1]}`;
   const token = String(fd.get('token') || '').trim();
-  if (!token) { toast('Bitte den Zugriffstoken eintragen', 'warning'); return null; }
-  const path = String(fd.get('path') || '').trim().replace(/^\/+/, '') || 'gym-tracker/data.json';
+  if (!token) return fail('Bitte den Zugriffstoken eintragen.', '#sync-token');
+  const path = String(fd.get('path') || '').trim().replace(/^\/+|\/+$/g, '') || 'gym-tracker/data.json';
+  if (path.split('/').some((seg) => !seg || seg === '.' || seg === '..')) return fail('Ungültiger Dateipfad – bitte z. B. gym-tracker/data.json verwenden.', '#sync-path');
   const branch = String(fd.get('branch') || '').trim();
   return { provider: 'github', owner: parts[0], repo: parts[1], token, path, branch };
 }
@@ -1402,18 +1448,20 @@ async function testSyncForm() {
   if (out) out.textContent = 'Prüfe Verbindung …';
   try {
     const r = await engine.test(cfg);
-    const msg = !r.exists ? 'Verbunden. Die Datei wird beim ersten Abgleich angelegt.'
-      : !r.valid ? 'Verbunden, aber am Dateipfad liegt eine fremde Datei. Bitte einen anderen Pfad wählen.'
-      : `Verbunden. Datei vorhanden mit ${plural(r.workouts, 'Training', 'Trainings')} – wird beim Abgleich zusammengeführt.`;
-    if (out) { out.textContent = msg; out.style.color = r.valid ? 'var(--success)' : 'var(--danger)'; }
+    const privacy = r.isPrivate === false ? ' Achtung: Das Repository ist öffentlich – deine Trainingsdaten wären für alle sichtbar. Besser ein privates Repository wählen.' : '';
+    const msg = !r.exists ? `Verbunden. Die Datei wird beim ersten Abgleich angelegt.${privacy}`
+      : !r.valid ? 'Hinweis: Verbunden, aber am Dateipfad liegt eine fremde Datei. Bitte einen anderen Pfad wählen.'
+      : `Verbunden. Datei vorhanden mit ${plural(r.workouts, 'Training', 'Trainings')} – wird beim Abgleich zusammengeführt.${privacy}`;
+    if (out) { out.textContent = msg; out.style.color = r.valid && !privacy ? 'var(--success)' : 'var(--warning)'; }
   } catch (err) {
-    if (out) { out.textContent = err && err.message ? err.message : 'Verbindung fehlgeschlagen.'; out.style.color = 'var(--danger)'; }
+    if (out) { out.textContent = `Fehler: ${err && err.message ? err.message : 'Verbindung fehlgeschlagen.'}`; out.style.color = 'var(--danger)'; }
   }
 }
 async function saveSyncForm() {
   const cfg = readSyncForm(); if (!cfg) return;
   Object.assign(state.sync, cfg, { enabled: true, lastError: null, lastSha: null });
   save();
+  requestPersistence(true);
   closeModal();
   render();
   const ok = await engine.flush('setup');
@@ -1445,6 +1493,7 @@ function viewTabbar() {
 }
 
 function render() {
+  ui.pendingRender = false;
   applyTheme();
   $('#topbar').innerHTML = viewTopbar();
   const view = $('#view');
@@ -1529,9 +1578,9 @@ document.addEventListener('click', (e) => {
     case 'sync-test': testSyncForm(); break;
     case 'sync-now': engine.flush('manual').then((ok) => { if (!ok && engine.status().state !== 'off') toast(engine.status().message || 'Abgleich fehlgeschlagen', 'danger'); render(); }); renderSyncStatus(); break;
     case 'sync-disconnect': disconnectSync(); break;
-    case 'toggle-token': { const i = $('#sync-token'); if (i) i.type = i.type === 'password' ? 'text' : 'password'; break; }
-    case 'install-app': if (installPrompt) { const p = installPrompt; installPrompt = null; p.prompt(); p.userChoice.finally(() => render()); } break;
-    case 'reset-all': confirmDialog({ title: 'Wirklich alles löschen?', text: `Übungen, Pläne und der komplette Verlauf werden auf diesem Gerät entfernt.${state.sync.enabled ? ' Cloud-Sync wird getrennt; die Kopie im Repository bleibt bestehen.' : ' Exportiere vorher ein Backup, falls du die Daten behalten willst.'}`, okLabel: 'Alles löschen', danger: true, onOk: () => { const deviceId = state.sync.deviceId; state = S.migrateState(defaultState()); state.sync.deviceId = deviceId; save(); stopRest(true); closeModal(); applyTheme(); render(); toast('Alle Daten gelöscht', 'info'); } }); break;
+    case 'toggle-token': { const i = $('#sync-token'); if (i) { const show = i.type === 'password'; i.type = show ? 'text' : 'password'; el.setAttribute('aria-label', show ? 'Token verbergen' : 'Token anzeigen'); el.setAttribute('aria-pressed', String(show)); } break; }
+    case 'install-app': if (installPrompt) { const p = installPrompt; installPrompt = null; p.prompt(); p.userChoice.finally(() => { requestPersistence(true); render(); }); } break;
+    case 'reset-all': confirmDialog({ title: 'Wirklich alles löschen?', text: `Übungen, Pläne und der komplette Verlauf werden auf diesem Gerät entfernt.${state.sync.enabled ? ' Cloud-Sync wird getrennt; die Kopie im Repository bleibt bestehen.' : ' Exportiere vorher ein Backup, falls du die Daten behalten willst.'}`, okLabel: 'Alles löschen', danger: true, onOk: () => { const deviceId = state.sync.deviceId; engine.stop(); state = S.migrateState(defaultState()); state.profile.updatedAt = new Date(0).toISOString(); state.sync.deviceId = deviceId; save(); stopRest(true); closeModal(); applyTheme(); render(); toast('Alle Daten gelöscht', 'info'); } }); break;
     default: break;
   }
 });
@@ -1616,12 +1665,15 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && re
 /* ---------- Sync-Auslöser ---------- */
 window.addEventListener('online', () => engine.run('online'));
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden || !engine.enabled()) return;
+  if (!engine.enabled()) return;
+  if (document.hidden) { if (state.sync.dirty && navigator.onLine !== false) engine.flush('background'); return; }
   const last = state.sync.lastSyncAt ? new Date(state.sync.lastSyncAt).getTime() : 0;
   if (Date.now() - last > 60000 || state.sync.dirty) engine.run('foreground');
 });
+window.addEventListener('pagehide', () => { if (engine.enabled() && state.sync.dirty && navigator.onLine !== false) engine.flush('background'); });
 setInterval(() => { if (!document.hidden && engine.enabled()) engine.run('periodic'); }, 5 * 60 * 1000);
-window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (ui.tab === 'profile') { ui.keepScroll = true; render(); } });
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (ui.tab === 'profile' && !isTyping()) { ui.keepScroll = true; render(); } });
+document.addEventListener('focusout', () => setTimeout(flushPendingRender, 50));
 window.addEventListener('appinstalled', () => { installPrompt = null; toast('App installiert', 'success'); if (ui.tab === 'profile') render(); });
 
 /* ---------- Start ---------- */
@@ -1631,7 +1683,7 @@ window.addEventListener('appinstalled', () => { installPrompt = null; toast('App
   applyTheme();
   render();
   syncClock();
-  requestPersistence().then(() => { if (ui.tab === 'profile') { ui.keepScroll = true; render(); } });
+  requestPersistence(false).then(() => { if (ui.tab === 'profile') { ui.keepScroll = true; render(); } });
   if (engine.enabled()) engine.run('startup');
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     navigator.serviceWorker.register('sw.js').catch(() => { /* offline-Modus optional */ });
