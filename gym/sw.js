@@ -1,13 +1,14 @@
 /* Service Worker: macht den Gym Tracker offline nutzbar.
  * Strategie: Netzwerk zuerst, bei Fehler aus dem Cache (so sind Updates
  * sofort sichtbar, die App funktioniert aber auch ohne Empfang). */
-const CACHE = 'gym-tracker-v1';
+const CACHE = 'gym-tracker-v2';
 const SHELL = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './progression.js',
+  './sync.js',
   './manifest.webmanifest',
   './icons/icon.svg',
   './icons/icon-192.png',

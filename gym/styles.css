@@ -192,6 +192,8 @@ svg { width: 20px; height: 20px; flex-shrink: 0; }
   gap: 4px;
 }
 .link svg { width: 16px; height: 16px; }
+a.link { text-decoration: none; }
+.rules a.link { font-size: inherit; }
 
 /* ===== Formulare ===== */
 .field { margin-bottom: 14px; }
@@ -410,6 +412,8 @@ button.item:active { transform: scale(0.99); }
   white-space: nowrap;
 }
 .badge svg { width: 13px; height: 13px; }
+.badge[hidden] { display: none; }
+.card.rec { display: flex; }
 
 /* ===== Training: Übungskarte ===== */
 .exercise-card { padding: 14px; }

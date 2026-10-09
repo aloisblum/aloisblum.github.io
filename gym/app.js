@@ -3,8 +3,9 @@
 'use strict';
 
 const P = window.Progression;
+const S = window.Sync;
 const STORAGE_KEY = 'gymtracker.v1';
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 /* ---------- Hilfsfunktionen ---------- */
 const $ = (sel, root) => (root || document).querySelector(sel);
@@ -74,18 +75,60 @@ function defaultState() {
     exercises: [],
     routines: [],
     workouts: [],
+    tombstones: [],
+    sync: {},
     active: null,
   };
 }
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState();
-    return sanitize(JSON.parse(raw));
-  } catch (err) {
-    console.warn('Konnte gespeicherte Daten nicht lesen', err);
-    return defaultState();
+
+/* Zweiter Speicherort (IndexedDB) als Sicherungskopie neben localStorage */
+const idb = {
+  available: typeof indexedDB !== 'undefined',
+  open() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('gymtracker', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+  async get(key) {
+    if (!this.available) return undefined;
+    try {
+      const db = await this.open();
+      return await new Promise((resolve, reject) => {
+        const req = db.transaction('kv').objectStore('kv').get(key);
+        req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+      });
+    } catch { return undefined; }
+  },
+  async set(key, value) {
+    if (!this.available) return;
+    try {
+      const db = await this.open();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(value, key);
+        tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+      });
+    } catch { /* Sicherungskopie ist optional */ }
+  },
+};
+
+async function loadState() {
+  let data = null, source = 'local';
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) data = JSON.parse(raw); }
+  catch (err) { console.warn('localStorage nicht lesbar', err); }
+  if (!data) {
+    const mirror = await idb.get('state');
+    if (mirror && typeof mirror === 'object') { data = mirror; source = 'mirror'; }
   }
+  const st = S.migrateState(sanitize(data || {}));
+  if (source === 'mirror') {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); } catch { /* wird beim nächsten Speichern erneut versucht */ }
+    setTimeout(() => toast('Daten aus der Sicherungskopie wiederhergestellt', 'info'), 300);
+  }
+  return st;
 }
 function sanitize(data) {
   const base = defaultState();
@@ -99,11 +142,81 @@ function sanitize(data) {
   if (s.active && !Array.isArray(s.active.entries)) s.active = null;
   return s;
 }
-let state = load();
-function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+let state = defaultState();
+let storagePersisted = null; // null = unbekannt, true/false = Antwort des Browsers
+
+// Lokal speichern (localStorage + IndexedDB-Spiegel), ohne Sync anzustoßen
+function persistLocal() {
+  let json;
+  try { json = JSON.stringify(state); }
+  catch (err) { console.error(err); return; }
+  try { localStorage.setItem(STORAGE_KEY, json); }
   catch { toast('Speichern fehlgeschlagen – Speicher voll?', 'danger'); }
+  idb.set('state', JSON.parse(json));
 }
+// Für gerätelokale Änderungen (laufendes Training, Design, Sync-Einstellungen)
+function save() { persistLocal(); }
+// Für Änderungen an synchronisierten Daten (Übungen, Pläne, Trainings, Profil)
+function saveSynced() { persistLocal(); engine.schedule(); }
+function touchProfile() { state.profile.updatedAt = new Date().toISOString(); }
+
+/* ---------- Cloud-Sync ---------- */
+const engine = S.createEngine({ getState: () => state, persist: persistLocal, onChange: onSyncChange });
+function onSyncChange(info) {
+  renderSyncStatus();
+  if (info.dataChanged) {
+    toast('Daten von einem anderen Gerät übernommen', 'success');
+    if (ui.tab === 'train' && state.active) ui.pendingRender = true; // laufendes Training nicht unterbrechen
+    else { ui.keepScroll = true; render(); }
+  }
+}
+function syncStatusView() {
+  const c = state.sync || {};
+  if (!c.enabled) return null;
+  const st = engine.status();
+  const when = c.lastSyncAt ? relativeTime(c.lastSyncAt) : 'noch nie';
+  if (st.state === 'syncing') return { tone: 'info', icon: 'refresh', short: 'Läuft …', text: 'Synchronisiere …', detail: '' };
+  if (st.state === 'offline') return { tone: 'warning', icon: 'cloud-off', short: 'Offline', text: `Offline · letzter Abgleich ${when}`, detail: st.message };
+  if (st.state === 'error' || c.lastError) return { tone: 'danger', icon: 'cloud-off', short: 'Fehler', text: 'Abgleich fehlgeschlagen', detail: st.message || c.lastError };
+  if (c.dirty) return { tone: 'info', icon: 'cloud', short: 'Ausstehend', text: `Änderungen werden gleich hochgeladen · letzter Abgleich ${when}`, detail: '' };
+  return { tone: 'success', icon: 'cloud', short: 'Synchronisiert', text: `Synchronisiert · ${when}`, detail: '' };
+}
+function renderSyncStatus() {
+  const v = syncStatusView();
+  $$('[data-sync-status]').forEach((el) => {
+    el.className = `badge tone-${v ? v.tone : 'info'}`;
+    el.innerHTML = v ? `${icon(v.icon)} ${esc(el.dataset.syncStatus === 'short' ? v.short : v.text)}` : '';
+    el.hidden = !v;
+  });
+  $$('[data-sync-detail]').forEach((el) => { el.textContent = v && v.detail ? v.detail : ''; el.hidden = !(v && v.detail); });
+}
+function relativeTime(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.round(diff / 60000);
+  if (m < 1) return 'gerade eben';
+  if (m < 60) return `vor ${m} Min.`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `vor ${h} Std.`;
+  return `am ${fmtDate(iso, { day: '2-digit', month: '2-digit' })} um ${fmtTime(iso)}`;
+}
+async function requestPersistence() {
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      storagePersisted = (await navigator.storage.persisted()) || (await navigator.storage.persist());
+    }
+  } catch { storagePersisted = null; }
+}
+function isStandalone() {
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+}
+function platform() {
+  const ua = navigator.userAgent || '';
+  const iOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (iOS) return 'ios';
+  if (/Android/.test(ua)) return 'android';
+  return 'desktop';
+}
+let installPrompt = null;
 
 const ui = {
   tab: 'train',
@@ -325,6 +438,7 @@ function createExercise(data) {
     restSeconds: num(data.restSeconds) != null ? Math.max(0, Math.round(num(data.restSeconds))) : null,
     notes: (data.notes || '').trim(),
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   if (ex.repMax < ex.repMin) { const t = ex.repMin; ex.repMin = ex.repMax; ex.repMax = t; }
   return ex;
@@ -342,9 +456,9 @@ function loadStarter() {
   STARTER_ROUTINES.forEach(([name, names]) => {
     if (routineNames.has(name.toLowerCase())) return;
     const ids = names.map((n) => byName.get(n.toLowerCase())).filter(Boolean).map((e) => e.id);
-    if (ids.length) state.routines.push({ id: uid(), name, exerciseIds: ids, createdAt: new Date().toISOString() });
+    if (ids.length) state.routines.push({ id: uid(), name, exerciseIds: ids, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   });
-  save();
+  saveSynced();
   toast(added ? `${plural(added, 'Übung', 'Übungen')} und 3 Pläne hinzugefügt` : 'Starter-Set ist bereits geladen', 'success');
   render();
 }
@@ -472,12 +586,13 @@ function finishWorkout() {
     if (nowBest > before + 1e-9 && nowBest > 0) prs.push({ name: en.exerciseName, e1rm: nowBest, before });
   });
 
-  const workout = { id: a.id, name: a.name, startedAt: a.startedAt, finishedAt: new Date().toISOString(), routineId: a.routineId, entries };
+  const finishedAt = new Date().toISOString();
+  const workout = { id: a.id, name: a.name, startedAt: a.startedAt, finishedAt, routineId: a.routineId, entries, updatedAt: finishedAt };
   state.workouts.unshift(workout);
   state.active = null;
   stopRest(true);
   clearInterval(clockTimer);
-  save();
+  saveSynced();
   render();
   showSummary(workout, prs);
 }
@@ -603,13 +718,14 @@ function saveExerciseForm(form) {
     ex = exById(id);
     const fresh = createExercise(data);
     Object.assign(ex, { name: fresh.name, muscle: fresh.muscle, equipment: fresh.equipment, repMin: fresh.repMin, repMax: fresh.repMax, sets: fresh.sets, increment: fresh.increment, restSeconds: fresh.restSeconds, notes: fresh.notes });
+    S.touch(ex);
     toast('Übung gespeichert', 'success');
   } else {
     ex = createExercise(data);
     state.exercises.push(ex);
     toast(`„${ex.name}“ angelegt`, 'success');
   }
-  save();
+  saveSynced();
   const after = modal && modal.afterSave;
   closeModal();
   if (after) after(ex); else render();
@@ -622,10 +738,10 @@ function deleteExercise(id) {
     text: n ? `Die Übung wird aus deiner Liste entfernt. Die ${plural(n, 'Einheit', 'Einheiten')} im Verlauf bleiben erhalten.` : 'Die Übung wird entfernt.',
     okLabel: 'Löschen', danger: true,
     onOk: () => {
-      state.exercises = state.exercises.filter((e) => e.id !== id);
-      state.routines.forEach((r) => { r.exerciseIds = r.exerciseIds.filter((x) => x !== id); });
+      S.removeEntity(state, 'exercises', id);
+      state.routines.forEach((r) => { if (r.exerciseIds.includes(id)) { r.exerciseIds = r.exerciseIds.filter((x) => x !== id); S.touch(r); } });
       if (ui.exerciseId === id) ui.exerciseId = null;
-      save(); closeModal(); render();
+      saveSynced(); closeModal(); render();
     },
   });
 }
@@ -663,23 +779,27 @@ function saveRoutineForm() {
   if (!draft.name.trim()) { toast('Bitte einen Namen eingeben', 'warning'); return; }
   if (!draft.exerciseIds.length) { toast('Füge mindestens eine Übung hinzu', 'warning'); return; }
   if (draft.id) {
-    const r = routineById(draft.id); if (r) { r.name = draft.name.trim(); r.exerciseIds = draft.exerciseIds.slice(); }
+    const r = routineById(draft.id); if (r) { r.name = draft.name.trim(); r.exerciseIds = draft.exerciseIds.slice(); S.touch(r); }
     toast('Plan gespeichert', 'success');
   } else {
-    state.routines.push({ id: uid(), name: draft.name.trim(), exerciseIds: draft.exerciseIds.slice(), createdAt: new Date().toISOString() });
+    state.routines.push({ id: uid(), name: draft.name.trim(), exerciseIds: draft.exerciseIds.slice(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     toast('Plan angelegt', 'success');
   }
-  save(); closeModal(); render();
+  saveSynced(); closeModal(); render();
 }
 function deleteRoutine(id) {
   const r = routineById(id); if (!r) return;
   confirmDialog({ title: `Plan „${r.name}“ löschen?`, text: 'Die Übungen selbst bleiben erhalten.', okLabel: 'Löschen', danger: true,
-    onOk: () => { state.routines = state.routines.filter((x) => x.id !== id); save(); closeModal(); render(); } });
+    onOk: () => { S.removeEntity(state, 'routines', id); saveSynced(); closeModal(); render(); } });
 }
 
 /* ---------- Export / Import ---------- */
 function exportData() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const copy = JSON.parse(JSON.stringify(state));
+  delete copy.sync; // Token und Geräteeinstellungen gehören nicht in ein Backup
+  state.sync.lastExportAt = new Date().toISOString();
+  save();
+  const blob = new Blob([JSON.stringify(copy, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = `gym-tracker-backup-${dayKey(new Date())}.json`;
@@ -693,12 +813,14 @@ function importData(file) {
     try {
       const data = JSON.parse(reader.result);
       if (!data || !Array.isArray(data.exercises) || !Array.isArray(data.workouts)) throw new Error('Format');
-      const incoming = sanitize(data);
+      const incoming = S.migrateState(sanitize(data));
+      incoming.sync = state.sync; // Sync-Verbindung dieses Geräts behalten, Fremd-Token nie übernehmen
+      incoming.active = state.active;
       confirmDialog({
         title: 'Backup importieren?',
-        text: `Das Backup enthält ${plural(incoming.exercises.length, 'Übung', 'Übungen')} und ${plural(incoming.workouts.length, 'Training', 'Trainings')}. Deine aktuellen Daten werden ersetzt.`,
+        text: `Das Backup enthält ${plural(incoming.exercises.length, 'Übung', 'Übungen')} und ${plural(incoming.workouts.length, 'Training', 'Trainings')}. Deine aktuellen Daten auf diesem Gerät werden ersetzt${state.sync.enabled ? ' und anschließend mit der Cloud zusammengeführt' : ''}.`,
         okLabel: 'Importieren', danger: true,
-        onOk: () => { state = incoming; save(); closeModal(); applyTheme(); render(); toast('Backup importiert', 'success'); },
+        onOk: () => { state = incoming; saveSynced(); closeModal(); applyTheme(); render(); toast('Backup importiert', 'success'); },
       });
     } catch {
       toast('Datei konnte nicht gelesen werden', 'danger');
@@ -855,6 +977,8 @@ function viewTrainHome() {
     parts.push(`<div class="card between wrap"><div><div class="item-title">Trainingspläne</div><div class="item-sub">Fasse Übungen zu Push, Pull, Beine … zusammen.</div></div><button class="btn btn-sm btn-ghost" data-action="new-routine">${icon('plus')} Plan anlegen</button></div>`);
   }
 
+  parts.push(progressSafetyCard());
+
   parts.push(`<div class="card"><div class="card-title">Diese Woche <span class="meta">${weekStreak() ? `${icon('flame')} ${plural(weekStreak(), 'Woche', 'Wochen')} in Folge` : ''}</span></div>
     <div class="tiles">
       <div class="tile"><div class="tile-label">Trainings</div><div class="tile-value">${week.count}</div></div>
@@ -872,6 +996,25 @@ function viewTrainHome() {
     </div>`);
   }
   return parts.join('');
+}
+
+function progressSafetyCard() {
+  const c = state.sync || {};
+  if (c.enabled) {
+    const v = syncStatusView();
+    return `<div class="card between wrap"><div class="flex"><span class="badge tone-${v.tone}" data-sync-status="full">${icon(v.icon)} ${esc(v.text)}</span></div>
+      <button class="btn btn-sm btn-ghost" data-action="sync-now">${icon('refresh')} Abgleichen</button></div>`;
+  }
+  if (state.workouts.length < 2) return '';
+  const exported = c.lastExportAt ? new Date(c.lastExportAt).getTime() : 0;
+  const newer = state.workouts.filter((w) => new Date(w.finishedAt).getTime() > exported).length;
+  const stale = !exported || (Date.now() - exported > 14 * 86400000 && newer > 0);
+  if (!stale) return '';
+  return `<div class="card rec tone-warning"><div class="rec-icon">${icon('cloud-off')}</div><div class="rec-body">
+    <div class="rec-label">Fortschritt nur auf diesem Gerät</div>
+    <div class="rec-text">${newer ? `${plural(newer, 'Training ist', 'Trainings sind')} noch nicht gesichert.` : 'Deine Daten liegen nur im Browser dieses Geräts.'} Richte Cloud-Sync ein, dann sind alle Trainings auf jedem Gerät verfügbar und gehen nicht verloren.</div>
+    <div class="btn-row mt-sm"><button class="btn btn-sm btn-primary" data-action="sync-setup">${icon('cloud')} Cloud-Sync einrichten</button><button class="btn btn-sm btn-ghost" data-action="export">${icon('download')} Backup</button></div>
+  </div></div>`;
 }
 
 function viewActiveWorkout() {
@@ -1073,6 +1216,9 @@ function viewProfile() {
     <div class="switch"><div><div class="switch-text">Dunkles Design</div><div class="switch-sub">Schont die Augen im Studio</div></div><button class="toggle ${p.theme === 'dark' ? 'on' : ''}" data-action="toggle-theme" role="switch" aria-checked="${p.theme === 'dark'}" aria-label="Dunkles Design"></button></div>
   </div>
 
+  ${syncCard()}
+  ${installCard()}
+
   <div class="card">
     <div class="card-title">Meine Übungen <span class="meta">${plural(state.exercises.length, 'Übung', 'Übungen')}</span></div>
     <p class="small muted mb">Lege hier Übungen mit eigenem Namen, Wiederholungsbereich und Gewichtsstufe an. Im Training wählst du sie dann einfach aus.</p>
@@ -1114,12 +1260,136 @@ function viewProfile() {
 
   <div class="card">
     <div class="card-title">Daten</div>
-    <p class="small muted mb">Alle Daten liegen nur in diesem Browser. Sichere sie regelmäßig als Datei, z. B. vor einem Gerätewechsel.</p>
+    <p class="small muted mb">Jede Eingabe wird sofort lokal gespeichert (doppelt: localStorage und IndexedDB). ${storagePersisted === true ? 'Der Browser hat dauerhaften Speicher zugesichert.' : storagePersisted === false ? 'Der Browser könnte den Speicher bei Platzmangel räumen – Cloud-Sync oder Backups schützen davor.' : ''} Ein Backup als Datei ist zusätzlich sinnvoll${state.sync.lastExportAt ? ` (zuletzt ${esc(fmtDate(state.sync.lastExportAt, { day: '2-digit', month: '2-digit', year: 'numeric' }))})` : ''}.</p>
     <div class="btn-row"><button class="btn btn-ghost" data-action="export">${icon('download')} Exportieren</button><label class="btn btn-ghost" for="import-file">${icon('upload')} Importieren</label></div>
     <input type="file" id="import-file" accept="application/json,.json" hidden data-field="import">
     <div class="btn-row mt"><button class="btn btn-ghost" data-action="load-starter">Starter-Set laden</button><button class="btn btn-danger" data-action="reset-all">${icon('trash')} Alles löschen</button></div>
   </div>
   <div class="version">Gym Tracker ${APP_VERSION} · funktioniert offline · Zum Homescreen hinzufügen für die App-Ansicht</div>`;
+}
+
+function syncCard() {
+  const c = state.sync || {};
+  if (!c.enabled) {
+    return `<div class="card">
+      <div class="card-title">Cloud-Sync <span class="meta">aus</span></div>
+      <p class="small muted mb">Speichert deine Übungen, Pläne und Trainings zusätzlich in einem privaten GitHub-Repository und gleicht sie zwischen Handy und Laptop ab. Jeder Abgleich ist eine Version, zu der du zurückkehren kannst. Kein eigener Server nötig.</p>
+      <button class="btn btn-primary btn-block" data-action="sync-setup">${icon('cloud')} Cloud-Sync einrichten</button>
+    </div>`;
+  }
+  const v = syncStatusView();
+  return `<div class="card">
+    <div class="card-title">Cloud-Sync <span class="badge tone-${v.tone}" data-sync-status="short">${icon(v.icon)} ${esc(v.short)}</span></div>
+    <div class="item-title">${esc(c.owner)}/${esc(c.repo)}</div>
+    <div class="item-sub">${esc(c.path || 'gym-tracker/data.json')}${c.branch ? ` · Branch ${esc(c.branch)}` : ''} · GitHub${c.lastSyncAt ? ` · letzter Abgleich ${esc(relativeTime(c.lastSyncAt))}` : ''}</div>
+    <p class="small mt-sm" style="color:var(--danger)" data-sync-detail ${v.detail ? '' : 'hidden'}>${esc(v.detail || '')}</p>
+    <div class="btn-row mt"><button class="btn btn-ghost" data-action="sync-now">${icon('refresh')} Jetzt abgleichen</button><button class="btn btn-ghost" data-action="sync-setup">${icon('edit')} Einstellungen</button></div>
+    <button class="btn btn-danger btn-block mt-sm" data-action="sync-disconnect">Verbindung trennen</button>
+  </div>`;
+}
+
+function installCard() {
+  const os = platform();
+  let body;
+  if (isStandalone()) {
+    body = `<p class="small muted">${icon('check')} Läuft als installierte App. Die Daten dieser App sind vom Browser getrennt – mit Cloud-Sync sind sie überall gleich.</p>`;
+  } else if (os === 'ios') {
+    body = `<ol class="rules">
+      <li>Öffne diese Seite in <b>Safari</b>.</li>
+      <li>Tippe unten auf das <b>Teilen-Symbol</b> (Quadrat mit Pfeil nach oben).</li>
+      <li>Wähle <b>„Zum Home-Bildschirm“</b> und bestätige mit <b>Hinzufügen</b>.</li>
+    </ol>
+    <p class="small muted mt-sm">Wichtig: iOS gibt der installierten App einen eigenen Speicher. Richte vorher Cloud-Sync ein oder exportiere ein Backup und importiere es in der App, damit nichts fehlt.</p>`;
+  } else if (installPrompt) {
+    body = `<p class="small muted mb">Installiere die App mit einem Tipp – sie bekommt ein eigenes Icon und läuft im Vollbild.</p>
+      <button class="btn btn-primary btn-block" data-action="install-app">${icon('smartphone')} App installieren</button>`;
+  } else if (os === 'android') {
+    body = `<ol class="rules">
+      <li>Öffne diese Seite in <b>Chrome</b>.</li>
+      <li>Tippe oben rechts auf das <b>Menü ⋮</b>.</li>
+      <li>Wähle <b>„App installieren“</b> bzw. <b>„Zum Startbildschirm hinzufügen“</b>.</li>
+    </ol>`;
+  } else {
+    body = `<p class="small muted">Am Computer: In Chrome oder Edge erscheint rechts in der Adressleiste ein Installieren-Symbol. Am Handy öffnest du <b>aloisblum.github.io/gym/</b> und fügst die Seite zum Home-Bildschirm hinzu.</p>`;
+  }
+  return `<div class="card"><div class="card-title">Auf dem Handy installieren</div>${body}</div>`;
+}
+
+function openSyncSetup() {
+  const c = state.sync || {};
+  const repoValue = c.owner && c.repo ? `${c.owner}/${c.repo}` : '';
+  openModal({
+    title: 'Cloud-Sync einrichten',
+    body: () => `
+      <form data-form="sync" id="sync-form">
+        <ol class="rules mb">
+          <li><b>Privates Repository anlegen</b> (einmalig): <a class="link" href="https://github.com/new?name=gym-tracker-daten&visibility=private" target="_blank" rel="noopener">github.com/new ${icon('external')}</a> – Name z. B. <b>gym-tracker-daten</b>, Sichtbarkeit <b>Private</b>, dann „Create repository“.</li>
+          <li><b>Zugriffstoken erstellen:</b> <a class="link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained token ${icon('external')}</a> – unter „Repository access“ <b>Only select repositories</b> → dein Daten-Repository wählen; unter „Permissions → Repository permissions“ bei <b>Contents</b> „Read and write“ setzen; Ablaufdatum wählen; „Generate token“ und den Token kopieren.</li>
+          <li><b>Hier eintragen</b> und „Verbindung testen“.</li>
+        </ol>
+        <div class="field"><label for="sync-repo">Repository (Besitzer/Name)</label><input class="input" id="sync-repo" name="repo" placeholder="aloisblum/gym-tracker-daten" value="${esc(repoValue)}" autocomplete="off" autocapitalize="off" spellcheck="false" required></div>
+        <div class="field"><label for="sync-token">Zugriffstoken</label>
+          <div class="search" style="position:relative"><input class="input" id="sync-token" name="token" type="password" placeholder="github_pat_…" value="${esc(c.token || '')}" autocomplete="off" autocapitalize="off" spellcheck="false" required style="padding-left:12px;padding-right:48px">
+          <button type="button" class="btn btn-icon" data-action="toggle-token" style="position:absolute;right:4px;top:3px" aria-label="Token anzeigen">${icon('eye')}</button></div>
+          <div class="hint">Wird nur auf diesem Gerät im Browser gespeichert. Nutze einen Token, der ausschließlich auf das Daten-Repository Zugriff hat.</div></div>
+        <div class="row">
+          <div class="field"><label for="sync-path">Dateipfad</label><input class="input" id="sync-path" name="path" value="${esc(c.path || 'gym-tracker/data.json')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="field"><label for="sync-branch">Branch (optional)</label><input class="input" id="sync-branch" name="branch" placeholder="Standard" value="${esc(c.branch || '')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+        </div>
+        <div id="sync-test-result" class="small mt-sm"></div>
+      </form>`,
+    foot: () => `<button class="btn btn-ghost" data-action="sync-test">Verbindung testen</button>
+                 <button class="btn btn-primary" type="submit" form="sync-form">Speichern &amp; abgleichen</button>`,
+    onMount: () => { const el = $(repoValue ? '#sync-token' : '#sync-repo'); if (el && !el.value) el.focus(); },
+  });
+}
+function readSyncForm() {
+  const form = $('#sync-form'); if (!form) return null;
+  const fd = new FormData(form);
+  const repo = String(fd.get('repo') || '').trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/\/+$/, '');
+  const parts = repo.split('/');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) { toast('Repository bitte als Besitzer/Name angeben', 'warning'); return null; }
+  const token = String(fd.get('token') || '').trim();
+  if (!token) { toast('Bitte den Zugriffstoken eintragen', 'warning'); return null; }
+  const path = String(fd.get('path') || '').trim().replace(/^\/+/, '') || 'gym-tracker/data.json';
+  const branch = String(fd.get('branch') || '').trim();
+  return { provider: 'github', owner: parts[0], repo: parts[1], token, path, branch };
+}
+async function testSyncForm() {
+  const cfg = readSyncForm(); if (!cfg) return;
+  const out = $('#sync-test-result');
+  if (out) out.textContent = 'Prüfe Verbindung …';
+  try {
+    const r = await engine.test(cfg);
+    const msg = !r.exists ? 'Verbunden. Die Datei wird beim ersten Abgleich angelegt.'
+      : !r.valid ? 'Verbunden, aber am Dateipfad liegt eine fremde Datei. Bitte einen anderen Pfad wählen.'
+      : `Verbunden. Datei vorhanden mit ${plural(r.workouts, 'Training', 'Trainings')} – wird beim Abgleich zusammengeführt.`;
+    if (out) { out.textContent = msg; out.style.color = r.valid ? 'var(--success)' : 'var(--danger)'; }
+  } catch (err) {
+    if (out) { out.textContent = err && err.message ? err.message : 'Verbindung fehlgeschlagen.'; out.style.color = 'var(--danger)'; }
+  }
+}
+async function saveSyncForm() {
+  const cfg = readSyncForm(); if (!cfg) return;
+  Object.assign(state.sync, cfg, { enabled: true, lastError: null, lastSha: null });
+  save();
+  closeModal();
+  render();
+  const ok = await engine.flush('setup');
+  if (ok) toast('Cloud-Sync aktiv – Daten abgeglichen', 'success');
+  else toast(engine.status().message || 'Abgleich fehlgeschlagen', 'danger');
+  render();
+}
+function disconnectSync() {
+  confirmDialog({
+    title: 'Cloud-Sync trennen?',
+    text: 'Die Daten bleiben auf diesem Gerät und im Repository erhalten, werden aber nicht mehr abgeglichen. Der Token wird von diesem Gerät gelöscht.',
+    okLabel: 'Trennen', danger: true,
+    onOk: () => {
+      state.sync = { deviceId: state.sync.deviceId, lastExportAt: state.sync.lastExportAt };
+      save(); closeModal(); render(); toast('Cloud-Sync getrennt', 'info');
+    },
+  });
 }
 
 function viewTabbar() {
@@ -1149,6 +1419,7 @@ function render() {
 /* ---------- Ereignisse ---------- */
 function setTab(tab) {
   ui.tab = tab;
+  ui.pendingRender = false;
   ui.keepScroll = false;
   if (tab !== 'exercises') ui.exerciseId = null;
   ui.menuEntry = null;
@@ -1199,7 +1470,7 @@ document.addEventListener('click', (e) => {
     case 'filter-muscle': ui.muscle = el.dataset.muscle; render(); break;
     case 'chart-metric': ui.chartMetric[id] = el.dataset.metric; render(); break;
     case 'history-toggle': if (ui.openWorkouts.has(id)) ui.openWorkouts.delete(id); else ui.openWorkouts.add(id); render(); break;
-    case 'delete-workout': { const w = state.workouts.find((x) => x.id === id); if (!w) break; confirmDialog({ title: 'Training löschen?', text: `„${w.name}“ vom ${fmtDate(w.finishedAt)} wird unwiderruflich gelöscht.`, okLabel: 'Löschen', danger: true, onOk: () => { state.workouts = state.workouts.filter((x) => x.id !== id); save(); closeModal(); render(); } }); break; }
+    case 'delete-workout': { const w = state.workouts.find((x) => x.id === id); if (!w) break; confirmDialog({ title: 'Training löschen?', text: `„${w.name}“ vom ${fmtDate(w.finishedAt)} wird unwiderruflich gelöscht.`, okLabel: 'Löschen', danger: true, onOk: () => { S.removeEntity(state, 'workouts', id); saveSynced(); closeModal(); render(); } }); break; }
 
     case 'new-routine': openRoutineForm(null); break;
     case 'edit-routine': openRoutineForm(routineById(id)); break;
@@ -1207,10 +1478,16 @@ document.addEventListener('click', (e) => {
     case 'routine-move': { const d = modal.draft; const i = d.exerciseIds.indexOf(id); const j = i + Number(el.dataset.dir); if (i >= 0 && j >= 0 && j < d.exerciseIds.length) { [d.exerciseIds[i], d.exerciseIds[j]] = [d.exerciseIds[j], d.exerciseIds[i]]; } d.name = $('#rt-name').value; refreshModal(); break; }
     case 'routine-remove': { const d = modal.draft; d.exerciseIds = d.exerciseIds.filter((x) => x !== id); d.name = $('#rt-name').value; refreshModal(); break; }
 
-    case 'toggle-rpe': state.profile.trackRpe = !state.profile.trackRpe; save(); render(); break;
+    case 'toggle-rpe': state.profile.trackRpe = !state.profile.trackRpe; touchProfile(); saveSynced(); render(); break;
     case 'toggle-theme': state.profile.theme = state.profile.theme === 'dark' ? 'light' : 'dark'; save(); render(); break;
-    case 'export': exportData(); break;
-    case 'reset-all': confirmDialog({ title: 'Wirklich alles löschen?', text: 'Übungen, Pläne und der komplette Verlauf werden entfernt. Exportiere vorher ein Backup, falls du die Daten behalten willst.', okLabel: 'Alles löschen', danger: true, onOk: () => { state = defaultState(); save(); stopRest(true); closeModal(); applyTheme(); render(); toast('Alle Daten gelöscht', 'info'); } }); break;
+    case 'export': exportData(); render(); break;
+    case 'sync-setup': if (modal) closeModal(); openSyncSetup(); break;
+    case 'sync-test': testSyncForm(); break;
+    case 'sync-now': engine.flush('manual').then((ok) => { if (!ok && engine.status().state !== 'off') toast(engine.status().message || 'Abgleich fehlgeschlagen', 'danger'); render(); }); renderSyncStatus(); break;
+    case 'sync-disconnect': disconnectSync(); break;
+    case 'toggle-token': { const i = $('#sync-token'); if (i) i.type = i.type === 'password' ? 'text' : 'password'; break; }
+    case 'install-app': if (installPrompt) { const p = installPrompt; installPrompt = null; p.prompt(); p.userChoice.finally(() => render()); } break;
+    case 'reset-all': confirmDialog({ title: 'Wirklich alles löschen?', text: `Übungen, Pläne und der komplette Verlauf werden auf diesem Gerät entfernt.${state.sync.enabled ? ' Cloud-Sync wird getrennt; die Kopie im Repository bleibt bestehen.' : ' Exportiere vorher ein Backup, falls du die Daten behalten willst.'}`, okLabel: 'Alles löschen', danger: true, onOk: () => { const deviceId = state.sync.deviceId; state = S.migrateState(defaultState()); state.sync.deviceId = deviceId; save(); stopRest(true); closeModal(); applyTheme(); render(); toast('Alle Daten gelöscht', 'info'); } }); break;
     default: break;
   }
 });
@@ -1227,8 +1504,8 @@ document.addEventListener('input', (e) => {
     }
     case 'query': { ui.query = el.value; const pos = el.selectionStart; ui.keepScroll = true; render(); const again = $('[data-field="query"]'); if (again) { again.focus(); again.setSelectionRange(pos, pos); } break; }
     case 'picker-query': ui.picker.query = el.value; { const list = $('#picker-list'); if (list) list.innerHTML = pickerList(); } break;
-    case 'profile-name': state.profile.name = el.value.trim(); save(); break;
-    case 'profile-rest': { const n = num(el.value); if (n != null && n >= 0) { state.profile.restSeconds = Math.round(n); save(); } break; }
+    case 'profile-name': state.profile.name = el.value.trim(); touchProfile(); saveSynced(); break;
+    case 'profile-rest': { const n = num(el.value); if (n != null && n >= 0) { state.profile.restSeconds = Math.round(n); touchProfile(); saveSynced(); } break; }
     case 'routine-name': if (modal && modal.draft) modal.draft.name = el.value; break;
     case 'ex-increment': el.dataset.touched = '1'; break;
     default: break;
@@ -1243,7 +1520,7 @@ document.addEventListener('change', (e) => {
     case 'profile-unit': {
       const unit = el.value;
       if (unit === state.profile.unit) break;
-      state.profile.unit = unit; save();
+      state.profile.unit = unit; touchProfile(); saveSynced();
       toast('Einheit geändert – bestehende Gewichte werden nicht umgerechnet', 'info');
       render(); break;
     }
@@ -1274,6 +1551,7 @@ document.addEventListener('submit', (e) => {
   const kind = form.dataset.form;
   if (kind === 'exercise') saveExerciseForm(form);
   else if (kind === 'routine') saveRoutineForm();
+  else if (kind === 'sync') saveSyncForm();
   else if (kind === 'prompt') { const v = $('#prompt-input').value; if (modal && modal.onOk) modal.onOk(v); }
 });
 
@@ -1291,11 +1569,28 @@ document.addEventListener('keydown', (e) => {
 // Hintergrund-Tab: Ruhe-Timer nachholen, falls das Gerät geschlafen hat
 document.addEventListener('visibilitychange', () => { if (!document.hidden && rest.endsAt) tickRest(); });
 
+/* ---------- Sync-Auslöser ---------- */
+window.addEventListener('online', () => engine.run('online'));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !engine.enabled()) return;
+  const last = state.sync.lastSyncAt ? new Date(state.sync.lastSyncAt).getTime() : 0;
+  if (Date.now() - last > 60000 || state.sync.dirty) engine.run('foreground');
+});
+setInterval(() => { if (!document.hidden && engine.enabled()) engine.run('periodic'); }, 5 * 60 * 1000);
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (ui.tab === 'profile') { ui.keepScroll = true; render(); } });
+window.addEventListener('appinstalled', () => { installPrompt = null; toast('App installiert', 'success'); if (ui.tab === 'profile') render(); });
+
 /* ---------- Start ---------- */
-applyTheme();
-render();
-syncClock();
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => { /* offline-Modus optional */ }); });
-}
+(async function boot() {
+  applyTheme();
+  state = await loadState();
+  applyTheme();
+  render();
+  syncClock();
+  requestPersistence().then(() => { if (ui.tab === 'profile') { ui.keepScroll = true; render(); } });
+  if (engine.enabled()) engine.run('startup');
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* offline-Modus optional */ });
+  }
+})();
 })();
